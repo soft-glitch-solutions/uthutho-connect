@@ -17,6 +17,8 @@ import Profile from "./pages/Profile";
 import Stop from "./pages/Stop";
 import HubsDetials from "./pages/HubsDetials";
 import RouteDetails from "./pages/RoutesDetials";
+import AddFavorites from "./pages/AddFavorites";
+import FavoriteDetails from './pages/FavoriteDetails';
 
 const queryClient = new QueryClient();
 
@@ -30,6 +32,8 @@ const App = () => (
           <Route path="/" element={<Onboarding />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/home" element={<MainLayout><Home /></MainLayout>} />
+          <Route path="/addFavourties" element={<MainLayout><AddFavorites /></MainLayout>} />
+          <Route path="/favorites/:favoriteId" element={<FavoriteDetails />} />
           <Route path="/hubs" element={<MainLayout><Hubs /></MainLayout>} />
           <Route path="/hubs/:hubId" element={<MainLayout><HubsDetials /></MainLayout>} />
           <Route path="/routes" element={<MainLayout><TransportRoutes /></MainLayout>} />

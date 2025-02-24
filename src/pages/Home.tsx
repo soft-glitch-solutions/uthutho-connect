@@ -2,19 +2,32 @@ import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton"; // Add this import
+import { useNavigate } from "react-router-dom"; // Add this import
 
 export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const navigate = useNavigate(); // Add this hook
 
-  // Fetch the user's profile (first name)
-  const { data: userProfile } = useQuery({
+  // Fetch the user's profile (first name and favorites)
+  const { data: userProfile, isLoading: isProfileLoading } = useQuery({
     queryKey: ['user-profile'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name')
+        .select('first_name, favorites')
         .eq('id', (await supabase.auth.getSession()).data.session?.user.id)
         .single();
 
@@ -44,7 +57,7 @@ export default function Home() {
   }, []);
 
   // Query to find the closest stop, hub, and route
-  const { data: nearestLocations, isLoading } = useQuery({
+  const { data: nearestLocations, isLoading: isNearestLoading } = useQuery({
     queryKey: ['nearest-locations', userLocation],
     queryFn: async () => {
       if (!userLocation) return null;
@@ -101,18 +114,114 @@ export default function Home() {
     return R * c; // Distance in km
   };
 
+  // Add a favorite
+  const handleAddFavorite = async (favorite: string) => {
+    const userId = (await supabase.auth.getSession()).data.session?.user.id;
+    if (!userId) return;
+
+    try {
+      // Fetch the user's current favorites
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('favorites')
+        .eq('id', userId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Add the new favorite to the list
+      const updatedFavorites = [...(profile.favorites || []), favorite];
+
+      // Update the profile with the new favorites
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ favorites: updatedFavorites })
+        .eq('id', userId);
+
+      if (updateError) throw updateError;
+
+      toast.success('Favorite added successfully!');
+    } catch (error) {
+      console.error('Error adding favorite:', error);
+      toast.error('An error occurred. Please try again.');
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Personalized Greeting */}
-      <h1 className="text-2xl font-bold">
-        Hi, {userProfile?.first_name || "User"}!
-      </h1>
+      {/* Personalized Greeting with Add Favorite Button */}
+      <div className="flex items-center">
+        <h1 className="text-2xl font-bold">
+          Hi, {userProfile?.first_name || "User"}!
+        </h1>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="icon" className="ml-2">
+              <Plus className="w-4 h-4" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Favorite</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                placeholder="Enter route, stop, or hub"
+                id="favorite-input"
+              />
+              <Button
+                onClick={() => {
+                  const favorite = (document.getElementById('favorite-input') as HTMLInputElement).value;
+                  if (favorite) {
+                    handleAddFavorite(favorite);
+                  }
+                }}
+              >
+                Add
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
 
+      {/* Favorites List */}
+      <div className="space-y-2">
+        <h3 className="font-semibold">Your Favorites</h3>
+        {isProfileLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((_, index) => (
+              <Skeleton key={index} className="h-24 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : userProfile?.favorites?.length ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {userProfile.favorites.map((favorite, index) => (
+              <Card
+                key={index}
+                className="p-4 cursor-pointer hover:bg-primary/10 transition-colors"
+                onClick={() => navigate(`/favorites/${favorite}`)} // Navigate to the favorite details page
+              >
+                <p className="text-lg font-medium">{favorite}</p>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground">No favorites added yet.</p>
+        )}
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">Nearby you</h1>
+      </div>
+
+      {/* Nearest Stop, Hub, and Route Cards */}
       {locationError ? (
         <Card className="p-6 text-red-500">{locationError}</Card>
-      ) : isLoading || !userLocation ? (
-        <div className="flex items-center justify-center p-6">
-          <Loader2 className="w-8 h-8 animate-spin" />
+      ) : isNearestLoading || !userLocation ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((_, index) => (
+            <Skeleton key={index} className="h-32 w-full rounded-lg" />
+          ))}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -156,25 +265,6 @@ export default function Home() {
             )}
           </Card>
 
-          {/* Nearest Route */}
-          <Card className="p-6">
-            <h3 className="font-semibold mb-2">Nearest Route</h3>
-            {nearestLocations?.nearestRoute ? (
-              <>
-                <p className="text-lg font-medium">{nearestLocations.nearestRoute.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  Distance: {calculateDistance(
-                    userLocation.lat,
-                    userLocation.lng,
-                    nearestLocations.nearestRoute.latitude,
-                    nearestLocations.nearestRoute.longitude
-                  ).toFixed(2)} km
-                </p>
-              </>
-            ) : (
-              <p className="text-muted-foreground">No routes found.</p>
-            )}
-          </Card>
         </div>
       )}
     </div>

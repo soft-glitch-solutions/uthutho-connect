@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton"; // Add this import
 
 interface Profile {
   id: string;
@@ -217,13 +218,52 @@ const Profile: React.FC = () => {
 
         <Tabs defaultValue="gamification" onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-3">
-            <TabsTrigger value="gamification">Gamification</TabsTrigger>
+            <TabsTrigger value="gamification">Rank</TabsTrigger>
             <TabsTrigger value="basic-info">Basic Info</TabsTrigger>
-            <TabsTrigger value="achievements">Achievements</TabsTrigger>
+            <TabsTrigger value="achievements">Awards</TabsTrigger>
           </TabsList>
 
           {loading ? (
-            <p className="text-center">Loading...</p>
+            <div className="space-y-4">
+              {/* Skeleton for Gamification Tab */}
+              <TabsContent value="gamification">
+                <div className="space-y-4">
+                  <Skeleton className="h-8 w-1/2 mx-auto" />
+                  <Skeleton className="h-6 w-3/4 mx-auto" />
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 2, 3].map((_, index) => (
+                      <Skeleton key={index} className="h-10 w-24 rounded-full" />
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Skeleton for Basic Info Tab */}
+              <TabsContent value="basic-info">
+                <div className="space-y-4">
+                  <div className="flex flex-col items-center">
+                    <Skeleton className="h-24 w-24 rounded-full" />
+                    <Skeleton className="h-6 w-32 mt-2" />
+                  </div>
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </TabsContent>
+
+              {/* Skeleton for Achievements Tab */}
+              <TabsContent value="achievements">
+                <div className="space-y-4">
+                  <Skeleton className="h-8 w-1/2" />
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((_, index) => (
+                      <Skeleton key={index} className="h-6 w-full" />
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+            </div>
           ) : (
             profile && (
               <>
