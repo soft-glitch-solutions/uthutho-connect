@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 const slides = [
   {
     title: "Welcome to Uthutho",
-    description: "Your smart urban transport companion",
+    description: "For commuters, by commuters",
     icon: Car,
     color: "text-transport-taxi",
   },
@@ -39,28 +39,32 @@ export function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-white to-gray-50">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md animate-fadeIn">
-        <div className="flex justify-center mb-8">
-          <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-transport-bus via-transport-taxi to-transport-train">
+        <div className="flex flex-col items-center mb-8">
+          <img src="/logo.png" alt="Uthutho" className="h-16 mb-2" />
+          <span className="text-2xl font-bold text-primary">
             Uthutho
+          </span>
+          <span className="text-sm text-foreground/80">
+            For commuters, by commuters
           </span>
         </div>
 
-        <Card className="p-6 backdrop-blur-sm bg-white/80 shadow-lg border-0">
+        <Card className="p-6 bg-background/50 backdrop-blur-sm border border-primary/20">
           <div className="flex justify-center mb-6">
             {slides.map((_, index) => (
               <div
                 key={index}
                 className={`h-1 w-8 mx-1 rounded-full transition-colors ${
-                  index === currentSlide ? "bg-primary" : "bg-gray-200"
+                  index === currentSlide ? "bg-primary" : "bg-foreground/10"
                 }`}
               />
             ))}
           </div>
 
           <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-4 h-16 relative">
               {slides.map((slide, index) => {
                 const Icon = slide.icon;
                 return (
@@ -80,16 +84,16 @@ export function Onboarding() {
                 );
               })}
             </div>
-            <h2 className="text-xl font-semibold mb-2">
+            <h2 className="text-xl font-semibold mb-2 text-foreground">
               {slides[currentSlide].title}
             </h2>
-            <p className="text-gray-600">
+            <p className="text-foreground/60">
               {slides[currentSlide].description}
             </p>
           </div>
 
           <Button
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-transport-bus to-transport-train hover:opacity-90 transition-opacity"
+            className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white transition-colors"
             onClick={nextSlide}
           >
             {currentSlide === slides.length - 1 ? "Get Started" : "Next"}
@@ -98,7 +102,7 @@ export function Onboarding() {
         </Card>
 
         <div className="mt-4 text-center">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-foreground/60">
             Developed by Soft Glitch Solutions
           </p>
         </div>

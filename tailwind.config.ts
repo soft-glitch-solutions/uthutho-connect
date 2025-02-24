@@ -17,16 +17,16 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        background: "#000000",
+        foreground: "#FFFFFF",
         transport: {
           bus: "#60A5FA",
           taxi: "#FCD34D",
           train: "#34D399"
         },
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "#1ea2b1",
+          foreground: "#FFFFFF",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -37,20 +37,20 @@ export default {
           foreground: "hsl(var(--destructive-foreground))",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "#1a1a1a",
+          foreground: "#a1a1aa",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "#1ea2b1",
+          foreground: "#FFFFFF",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "#1a1a1a",
+          foreground: "#FFFFFF",
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "#1a1a1a",
+          foreground: "#FFFFFF",
         },
       },
       fontFamily: {
