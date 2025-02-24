@@ -1,49 +1,61 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { useParams, Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { PlusCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
-export default function RouteDetails() {
-  const { routeId } = useParams<{ routeId: string }>();
-
-  const { data: route, isLoading: routeLoading } = useQuery({
-    queryKey: ["route", routeId],
+export default function Routes() {
+  const { data: routes, isLoading } = useQuery({
+    queryKey: ['routes'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("routes")
-        .select("id, name, transport_type, cost, start_point, end_point")
-        .eq("id", routeId)
-        .single();
-
+        .from('routes')
+        .select('*')
+        .order('name');
+      
       if (error) throw error;
-
       return data;
-    },
+    }
   });
-
-  if (routeLoading) return <p>Loading route details...</p>;
-  if (!route) return <p>Route not found.</p>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{route.name}</h1>
-        <Link to="/routes">Back to Routes</Link>
+        <h1 className="text-2xl font-bold">Transport Routes</h1>
+        <Button asChild>
+          <Link to="/route-request">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Request Route
+          </Link>
+        </Button>
       </div>
 
-      <Card className="p-4">
-        <h3 className="font-semibold mb-2">Transport Type</h3>
-        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">{route.transport_type}</span>
-
-        <h3 className="font-semibold mb-2">Cost</h3>
-        <p className="text-sm text-muted-foreground">R{route.cost.toFixed(2)}</p>
-
-        <h3 className="font-semibold mb-2">Start Point</h3>
-        <p className="text-sm text-muted-foreground">{route.start_point}</p>
-
-        <h3 className="font-semibold mb-2">End Point</h3>
-        <p className="text-sm text-muted-foreground">{route.end_point}</p>
-      </Card>
+      {isLoading ? (
+        <p>Loading routes...</p>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {routes?.map((route) => (
+            <Link key={route.id} to={`/routes/${route.id}`} className="block">
+              <Card className="p-4 hover:shadow-lg transition-shadow duration-200">
+                <h3 className="font-semibold mb-2">{route.name}</h3>
+                <div className="space-y-1 mb-3">
+                  <p className="text-sm text-muted-foreground">From: {route.start_point}</p>
+                  <p className="text-sm text-muted-foreground">To: {route.end_point}</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                    {route.transport_type}
+                  </span>
+                  <span className="text-sm font-medium">
+                    R{route.cost}
+                  </span>
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
