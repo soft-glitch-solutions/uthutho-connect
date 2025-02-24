@@ -23,7 +23,18 @@ export default function RouteRequest() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.from('route_requests').insert([formData]);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from('route_requests')
+        .insert({
+          start_point: formData.start_point,
+          end_point: formData.end_point,
+          transport_type: formData.transport_type,
+          description: formData.description,
+          user_id: user.id
+        });
 
       if (error) throw error;
 

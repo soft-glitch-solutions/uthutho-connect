@@ -25,13 +25,20 @@ export default function HubRequest() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.from('hub_requests').insert([
-        {
-          ...formData,
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from('hub_requests')
+        .insert({
+          name: formData.name,
+          address: formData.address,
+          transport_type: formData.transport_type,
+          description: formData.description,
           latitude: parseFloat(formData.latitude),
-          longitude: parseFloat(formData.longitude)
-        }
-      ]);
+          longitude: parseFloat(formData.longitude),
+          user_id: user.id
+        });
 
       if (error) throw error;
 

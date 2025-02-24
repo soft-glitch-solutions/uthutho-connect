@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      hub_requests: {
+        Row: {
+          address: string
+          created_at: string
+          description: string | null
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          status: string | null
+          transport_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          status?: string | null
+          transport_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          status?: string | null
+          transport_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       hubs: {
         Row: {
           address: string | null
@@ -66,6 +108,42 @@ export type Database = {
           last_name?: string | null
           preferred_transport?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      route_requests: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_point: string
+          id: string
+          start_point: string
+          status: string | null
+          transport_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_point: string
+          id?: string
+          start_point: string
+          status?: string | null
+          transport_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_point?: string
+          id?: string
+          start_point?: string
+          status?: string | null
+          transport_type?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
