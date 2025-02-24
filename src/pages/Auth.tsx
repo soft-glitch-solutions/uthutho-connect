@@ -29,7 +29,7 @@ export default function Auth() {
       if (error) throw error;
 
       toast.success("Successfully signed in!");
-      navigate("/dashboard");
+      navigate("/home");
     } catch (error: any) {
       toast.error(error.message);
     } finally {

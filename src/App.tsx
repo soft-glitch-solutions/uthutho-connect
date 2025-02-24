@@ -14,7 +14,7 @@ import HubRequest from "./pages/HubRequest";
 import RouteRequest from "./pages/RouteRequest";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
-import Stop from "./pages/Profile";
+import Stop from "./pages/Stop";
 
 const queryClient = new QueryClient();
 
