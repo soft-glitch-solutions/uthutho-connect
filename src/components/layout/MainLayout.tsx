@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Home, MapPin, Route, PlusCircle, LogOut } from "lucide-react";
+import { Menu, Home, MapPin, Route, PlusCircle, LogOut, User, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -17,11 +16,14 @@ export function MainLayout({ children }: MainLayoutProps) {
   const navigate = useNavigate();
 
   const menuItems = [
-    { icon: Home, label: "Dashboard", path: "/dashboard" },
+    { icon: Home, label: "Home", path: "/home" },
     { icon: MapPin, label: "Hubs", path: "/hubs" },
     { icon: Route, label: "Routes", path: "/routes" },
+    { icon: Flag, label: "Stops", path: "/stops" },
+    { icon: User, label: "Profile", path: "/profile" },
     { icon: PlusCircle, label: "Request Hub", path: "/hub-request" },
     { icon: PlusCircle, label: "Request Route", path: "/route-request" },
+
   ];
 
   const handleSignOut = async () => {
@@ -74,7 +76,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                 </div>
               </SheetContent>
             </Sheet>
-            <Link to="/dashboard" className="flex items-center gap-2">
+            <Link to="/home" className="flex items-center gap-2">
               <img src="/logo.png" alt="Uthutho" className="h-8 w-8" />
               <span className="font-semibold text-xl">Uthutho</span>
             </Link>
@@ -88,8 +90,8 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 h-14 border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container h-full">
-          <div className="grid h-full grid-cols-3 items-center justify-items-center">
-            {menuItems.slice(0, 3).map((item) => (
+          <div className="grid h-full grid-cols-5 items-center justify-items-center">
+            {menuItems.slice(0, 5).map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
