@@ -8,8 +8,10 @@ import { Onboarding } from "./components/Onboarding";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
+// Create a client
 const queryClient = new QueryClient();
 
+// Wrap the App component with QueryClientProvider
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
