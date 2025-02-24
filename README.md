@@ -1,69 +1,66 @@
-# Welcome to your Lovable project
+# Uthutho Maps
 
-## Project info
+**Uthutho Maps** is a free, community-driven app designed to help South African commuters plan their journeys, stay informed about transport routes, and receive real-time updates about their trips. Whether you're using buses, trains, minibus taxis, or other modes of transport, Uthutho Maps ensures you stay connected and informed.
 
-**URL**: https://lovable.dev/projects/386be799-5f98-41ad-931e-759ef91e733f
+---
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Real-Time Route Information**: Get live updates on transport schedules, delays, and cancellations.
+- **Route Planning**: Plan your journey by selecting your starting point and destination. The app suggests the best routes, including combinations of different transport modes.
+- **Transport Hub Updates**: Stay informed about your selected transport hubs (e.g., bus stops, train stations, taxi ranks) with real-time notifications.
+- **Crowdsourced Information**: Share and receive updates from other commuters about route conditions, delays, or safety concerns.
+- **Safety Features**: Access safe route recommendations and emergency contact options.
+- **Offline Mode**: Download maps and schedules for offline use, perfect for areas with limited internet connectivity.
+- **Community Chat**: Connect with other commuters to share tips, updates, and advice.
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/386be799-5f98-41ad-931e-759ef91e733f) and start prompting.
+## How to Use
 
-Changes made via Lovable will be committed automatically to this repo.
+1. **Download and Install**:
+   - Download Uthutho Maps from the [Google Play Store](https://play.google.com) or [Apple App Store](https://www.apple.com/app-store/).
+   - Install the app on your smartphone.
 
-**Use your preferred IDE**
+2. **Create an Account**:
+   - Sign up using your email address or phone number.
+   - Verify your account via the code sent to your email or phone.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+3. **Select Your Transport Hubs**:
+   - Choose your preferred transport hubs (e.g., train stations, bus stops, taxi ranks).
+   - Save frequently used routes for quick access.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+4. **Plan Your Journey**:
+   - Enter your starting point and destination.
+   - View suggested routes, estimated travel times, and costs.
 
-Follow these steps:
+5. **Stay Informed**:
+   - Receive real-time notifications about delays, cancellations, or changes to your selected routes or hubs.
+   - Use the community chat to share or receive updates from other commuters.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+6. **Offline Mode**:
+   - Download maps and schedules for offline use in areas with poor internet connectivity.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Screenshots
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+![Home Screen](screenshots/home.png)  
+*Home Screen: Plan your journey and view real-time updates.*
 
-**Edit a file directly in GitHub**
+![Route Planning](screenshots/route.png)  
+*Route Planning: Get the best routes and transport options.*
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+![Community Chat](screenshots/chat.png)  
+*Community Chat: Connect with other commuters for tips and updates.*
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Installation for Developers
 
-## What technologies are used for this project?
+If you're a developer and want to contribute to Uthutho Maps, follow these steps:
 
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/386be799-5f98-41ad-931e-759ef91e733f) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/your-username/uthutho-maps.git
+   cd uthutho-maps
