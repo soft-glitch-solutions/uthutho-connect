@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,15 +36,17 @@ export default function Hubs() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {hubs?.map((hub) => (
-            <Card key={hub.id} className="p-4">
-              <h3 className="font-semibold mb-2">{hub.name}</h3>
-              <p className="text-sm text-muted-foreground mb-2">{hub.address}</p>
-              <div className="flex items-center gap-2">
-                <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-                  {hub.transport_type}
-                </span>
-              </div>
-            </Card>
+            <Link key={hub.id} to={`/hubs/${hub.id}`} className="block">
+              <Card className="p-4 cursor-pointer">
+                <h3 className="font-semibold mb-2">{hub.name}</h3>
+                <p className="text-sm text-muted-foreground mb-2">{hub.address}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                    {hub.transport_type}
+                  </span>
+                </div>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

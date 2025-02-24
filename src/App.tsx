@@ -15,6 +15,7 @@ import RouteRequest from "./pages/RouteRequest";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Stop from "./pages/Stop";
+import HubsDetials from "./pages/HubsDetials";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/home" element={<MainLayout><Home /></MainLayout>} />
           <Route path="/hubs" element={<MainLayout><Hubs /></MainLayout>} />
+          <Route path="/hubs/:hubId" element={<MainLayout><HubsDetials /></MainLayout>} />
           <Route path="/routes" element={<MainLayout><TransportRoutes /></MainLayout>} />
           <Route path="/hub-request" element={<MainLayout><HubRequest /></MainLayout>} />
           <Route path="/route-request" element={<MainLayout><RouteRequest /></MainLayout>} />
