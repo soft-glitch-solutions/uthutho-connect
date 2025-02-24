@@ -75,7 +75,7 @@ export function MainLayout({ children }: MainLayoutProps) {
               </SheetContent>
             </Sheet>
             <Link to="/dashboard" className="flex items-center gap-2">
-              <img src="/logo.svg" alt="Uthutho" className="h-8 w-8" />
+              <img src="/logo.png" alt="Uthutho" className="h-8 w-8" />
               <span className="font-semibold text-xl">Uthutho</span>
             </Link>
           </div>
