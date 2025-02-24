@@ -141,7 +141,7 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+    <div className="flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md p-6 bg-background/50 backdrop-blur-sm border border-primary/20">
         <h1 className="text-2xl font-bold text-center mb-6">Your Profile</h1>
 
