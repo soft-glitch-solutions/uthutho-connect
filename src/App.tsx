@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Stop from "./pages/Stop";
 import HubsDetials from "./pages/HubsDetials";
+import RouteDetails from "./pages/RoutesDetials";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/hubs" element={<MainLayout><Hubs /></MainLayout>} />
           <Route path="/hubs/:hubId" element={<MainLayout><HubsDetials /></MainLayout>} />
           <Route path="/routes" element={<MainLayout><TransportRoutes /></MainLayout>} />
+          <Route path="/routes/:routeId" element={<MainLayout><RouteDetails /></MainLayout>} />
           <Route path="/hub-request" element={<MainLayout><HubRequest /></MainLayout>} />
           <Route path="/route-request" element={<MainLayout><RouteRequest /></MainLayout>} />
           <Route path="/stops" element={<MainLayout><Stop /></MainLayout>} />

@@ -8,7 +8,7 @@ import { useState } from "react";
 export default function HubsDetails() {
   const { hubId } = useParams<{ hubId: string }>();
 
-  console.log("Hub ID:", hubId);  // Debugging the hubId
+  console.log("Hub ID:", hubId); // Debugging the hubId
 
   const { data: hub, isLoading: hubLoading, error: hubError } = useQuery({
     queryKey: ["hub", hubId],
@@ -134,12 +134,14 @@ export default function HubsDetails() {
       ) : filteredRoutes?.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredRoutes.map((route) => (
-            <Card key={route.id} className="p-4">
-              <h3 className="font-semibold mb-2">{route.name}</h3>
-              <p className="text-sm text-muted-foreground">{route.start_point} → {route.end_point}</p>
-              <p className="text-sm text-muted-foreground">Transport Type: {route.transport_type}</p>
-              <p className="text-sm text-muted-foreground">Cost: R{route.cost.toFixed(2)}</p>
-            </Card>
+            <Link key={route.id} to={`/routes/${route.id}`} className="block">
+              <Card className="p-4 hover:shadow-lg transition-shadow duration-200">
+                <h3 className="font-semibold mb-2">{route.name}</h3>
+                <p className="text-sm text-muted-foreground">{route.start_point} → {route.end_point}</p>
+                <p className="text-sm text-muted-foreground">Transport Type: {route.transport_type}</p>
+                <p className="text-sm text-muted-foreground">Cost: R{route.cost.toFixed(2)}</p>
+              </Card>
+            </Link>
           ))}
         </div>
       ) : (
