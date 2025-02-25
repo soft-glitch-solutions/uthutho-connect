@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { CheckCircle } from "lucide-react"; // For the "Got Picked Up" marker
 
 const TRANSPORT_TYPES = ["Bus 🚌", "Train 🚂", "Taxi 🚕"];
 const WAITING_COLORS = {
@@ -67,9 +68,17 @@ export default function Stops() {
     },
   });
 
+  // Get the current user's waiting status
+  const { data: userSession } = supabase.auth.getSession();
+  const userId = userSession?.session?.user.id;
+
+  // Check if the user is already waiting at any stop
+  const isUserWaiting = stops?.some((stop) =>
+    stop.stop_waiting?.some((w: any) => w.user_id === userId)
+  );
+
   // Get unique destinations for dropdowns
   const uniqueDestinations = Array.from(new Set(stops?.map((stop) => stop.name) || []));
-
 
   // Filter stops based on selected destinations
   const filteredStops = stops?.filter((stop) => {
@@ -113,6 +122,10 @@ export default function Stops() {
   // Mark as waiting mutation
   const markAsWaitingMutation = useMutation({
     mutationFn: async ({ stopId, transportType }: { stopId: string, transportType: string }) => {
+      if (isUserWaiting) {
+        throw new Error("You are already waiting at another stop.");
+      }
+
       const { data: userSession } = await supabase.auth.getSession();
       if (!userSession?.session?.user.id) throw new Error("Not authenticated");
 
@@ -132,6 +145,29 @@ export default function Stops() {
     },
     onError: (error) => {
       toast.error(`Error marking as waiting: ${error.message}`);
+    },
+  });
+
+  // Remove waiting status mutation
+  const removeWaitingMutation = useMutation({
+    mutationFn: async ({ stopId }: { stopId: string }) => {
+      const { data: userSession } = await supabase.auth.getSession();
+      if (!userSession?.session?.user.id) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("stop_waiting")
+        .delete()
+        .eq("stop_id", stopId)
+        .eq("user_id", userSession.session.user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stops"] });
+      toast.success("Marked as picked up!");
+    },
+    onError: (error) => {
+      toast.error(`Error marking as picked up: ${error.message}`);
     },
   });
 
@@ -219,7 +255,12 @@ export default function Stops() {
           filteredStops.map((stop) => {
             const waitingCount = stop.stop_waiting?.length || 0;
             const waitingColor = getWaitingColor(waitingCount);
-            
+
+            // Check if the current user is waiting at this stop
+            const isUserWaitingAtThisStop = stop.stop_waiting?.some(
+              (w: any) => w.user_id === userId
+            );
+
             return (
               <Card
                 key={stop.id}
@@ -233,18 +274,34 @@ export default function Stops() {
                       {waitingCount} waiting
                     </div>
                   </div>
-                  
+
+                  {/* "Got Picked Up" Button */}
+                  {isUserWaitingAtThisStop && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeWaitingMutation.mutate({ stopId: stop.id });
+                      }}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Got Picked Up
+                    </Button>
+                  )}
+
                   <div className="flex flex-wrap gap-2">
                     {TRANSPORT_TYPES.map((type) => {
                       const typeWaiting = stop.stop_waiting?.filter(
                         (w: any) => w.transport_type === type
                       ).length || 0;
-                      
+
                       return (
                         <Button
                           key={type}
                           variant="outline"
                           size="sm"
+                          disabled={isUserWaiting}
                           onClick={(e) => {
                             e.stopPropagation();
                             markAsWaitingMutation.mutate({
@@ -271,7 +328,7 @@ export default function Stops() {
           <DialogHeader>
             <DialogTitle>Stop Details</DialogTitle>
           </DialogHeader>
-          
+
           <div className="flex-1 overflow-y-auto space-y-4 pr-4">
             {selectedStop && (
               <>
@@ -291,45 +348,45 @@ export default function Stops() {
                 </div>
 
                 <div className="space-y-4">
-                    {stops
-                      ?.find((s) => s.id === selectedStop)
-                      ?.stop_posts?.sort(
-                        (a: any, b: any) =>
-                          new Date(b.created_at).getTime() -
-                          new Date(a.created_at).getTime()
-                      )
-                      .map((post: any) => (
-                        <div key={post.id} className="flex items-start gap-4">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage
-                              src={post.profiles?.avatar_url}
-                              alt={post.profiles?.first_name || 'User'}
-                            />
-                            <AvatarFallback>
-                              {(post.profiles?.first_name?.[0] || 'U').toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">
-                                {post.profiles?.first_name} {post.profiles?.last_name}
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                {formatDistanceToNow(new Date(post.created_at), {
-                                  addSuffix: true,
-                                })}
-                              </span>
-                            </div>
-                            {post.transport_waiting_for && (
-                              <p className="text-sm text-muted-foreground">
-                                Waiting for: {post.transport_waiting_for}
-                              </p>
-                            )}
-                            <p className="mt-1">{post.content}</p>
+                  {stops
+                    ?.find((s) => s.id === selectedStop)
+                    ?.stop_posts?.sort(
+                      (a: any, b: any) =>
+                        new Date(b.created_at).getTime() -
+                        new Date(a.created_at).getTime()
+                    )
+                    .map((post: any) => (
+                      <div key={post.id} className="flex items-start gap-4">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage
+                            src={post.profiles?.avatar_url}
+                            alt={post.profiles?.first_name || 'User'}
+                          />
+                          <AvatarFallback>
+                            {(post.profiles?.first_name?.[0] || 'U').toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {post.profiles?.first_name} {post.profiles?.last_name}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              {formatDistanceToNow(new Date(post.created_at), {
+                                addSuffix: true,
+                              })}
+                            </span>
                           </div>
+                          {post.transport_waiting_for && (
+                            <p className="text-sm text-muted-foreground">
+                              Waiting for: {post.transport_waiting_for}
+                            </p>
+                          )}
+                          <p className="mt-1">{post.content}</p>
                         </div>
-                      ))}
-                  </div>
+                      </div>
+                    ))}
+                </div>
 
                 <div className="border-t pt-4">
                   <h3 className="font-medium mb-4">Stop Chat</h3>
@@ -346,8 +403,6 @@ export default function Stops() {
                       Post Message
                     </Button>
                   </form>
-
-
                 </div>
               </>
             )}

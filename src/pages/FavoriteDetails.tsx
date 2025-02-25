@@ -1,4 +1,3 @@
-
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +8,15 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
+// Skeleton Loader for Cards
+const SkeletonCard = () => (
+  <Card className="p-6 animate-pulse">
+    <div className="h-8 bg-gray-200 rounded mb-4"></div>
+    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+  </Card>
+);
+
 export default function FavoriteDetails() {
   const { favoriteId } = useParams<{ favoriteId: string }>();
   const navigate = useNavigate();
@@ -16,7 +24,7 @@ export default function FavoriteDetails() {
   const [newMessage, setNewMessage] = useState('');
 
   // Fetch details of the selected favorite
-  const { data: favoriteDetails, isLoading } = useQuery({
+  const { data: favoriteDetails, isLoading: isFavoriteLoading } = useQuery({
     queryKey: ['favorite-details', favoriteId],
     queryFn: async () => {
       const { data: hub } = await supabase
@@ -30,7 +38,7 @@ export default function FavoriteDetails() {
   });
 
   // Fetch hub posts
-  const { data: posts } = useQuery({
+  const { data: posts, isLoading: isPostsLoading } = useQuery({
     queryKey: ['hub-posts', favoriteDetails?.id],
     enabled: !!favoriteDetails?.id,
     queryFn: async () => {
@@ -111,8 +119,8 @@ export default function FavoriteDetails() {
     },
   });
 
-  if (isLoading) {
-    return <div>Loading...</div>;
+  if (isFavoriteLoading) {
+    return <SkeletonCard />;
   }
 
   if (!favoriteDetails) {
@@ -137,7 +145,8 @@ export default function FavoriteDetails() {
 
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Hub Chat</h2>
-        
+
+        {/* Message Input */}
         <div className="space-y-4">
           <Card className="p-4">
             <Textarea
@@ -154,19 +163,25 @@ export default function FavoriteDetails() {
             </Button>
           </Card>
 
-          {posts?.map((post) => (
-            <Card key={post.id} className="p-4">
-              <p>{post.content}</p>
-              <div className="flex items-center gap-4 mt-2">
-                <Button variant="ghost" size="sm">
-                  💬 {post.post_comments?.length || 0}
-                </Button>
-                <Button variant="ghost" size="sm">
-                  ❤️ {post.post_reactions?.length || 0}
-                </Button>
-              </div>
-            </Card>
-          ))}
+          {/* Posts List */}
+          {isPostsLoading ? (
+            // Display Skeleton for Posts
+            Array.from({ length: 3 }).map((_, index) => <SkeletonCard key={index} />)
+          ) : (
+            posts?.map((post) => (
+              <Card key={post.id} className="p-4">
+                <p>{post.content}</p>
+                <div className="flex items-center gap-4 mt-2">
+                  <Button variant="ghost" size="sm">
+                    💬 {post.post_comments?.length || 0}
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    ❤️ {post.post_reactions?.length || 0}
+                  </Button>
+                </div>
+              </Card>
+            ))
+          )}
         </div>
       </div>
     </div>
