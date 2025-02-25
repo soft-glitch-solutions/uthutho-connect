@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu, Home, MapPin, Route, PlusCircle, LogOut, User, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+// Skeleton for User Points
+const SkeletonUserPoints = () => (
+  <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
+);
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -14,6 +19,8 @@ export function MainLayout({ children }: MainLayoutProps) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const [userPoints, setUserPoints] = useState<number | null>(null);
+  const [loadingPoints, setLoadingPoints] = useState(true);
 
   const menuItems = [
     { icon: Home, label: "Home", path: "/home" },
@@ -23,8 +30,32 @@ export function MainLayout({ children }: MainLayoutProps) {
     { icon: User, label: "Profile", path: "/profile" },
     { icon: PlusCircle, label: "Request Hub", path: "/hub-request" },
     { icon: PlusCircle, label: "Request Route", path: "/route-request" },
-
   ];
+
+  // Fetch User Points
+  useEffect(() => {
+    const fetchUserPoints = async () => {
+      try {
+        const { data: userSession } = await supabase.auth.getSession();
+        if (userSession?.session?.user.id) {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('points')
+            .eq('user_id', userSession.session.user.id)
+            .single();
+
+          if (error) throw error;
+          setUserPoints(data?.points || 0);
+        }
+      } catch (error) {
+        toast.error("Error fetching points.");
+      } finally {
+        setLoadingPoints(false);
+      }
+    };
+
+    fetchUserPoints();
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -80,6 +111,20 @@ export function MainLayout({ children }: MainLayoutProps) {
               <img src="/logo.png" alt="Uthutho" className="h-8 w-8" />
               <span className="font-semibold text-xl">Uthutho</span>
             </Link>
+          </div>
+
+          {/* User Points Section */}
+          <div className="flex items-center gap-4">
+            {loadingPoints ? (
+              <SkeletonUserPoints />
+            ) : (
+              <>
+                <span className="font-semibold text-lg">{userPoints}</span>
+                <Button variant="ghost" size="icon" onClick={() => toast.success("Adding points feature coming soon!")}>
+                  <PlusCircle className="h-5 w-5" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>
