@@ -290,23 +290,7 @@ export default function Stops() {
                   </div>
                 </div>
 
-                <div className="border-t pt-4">
-                  <h3 className="font-medium mb-4">Stop Chat</h3>
-                  <form onSubmit={handleCreatePost} className="space-y-4 mb-6">
-                    <Textarea
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder="Write a message..."
-                    />
-                    <Button
-                      type="submit"
-                      disabled={createStopPostMutation.isPending}
-                    >
-                      Post Message
-                    </Button>
-                  </form>
-
-                  <div className="space-y-4">
+                <div className="space-y-4">
                     {stops
                       ?.find((s) => s.id === selectedStop)
                       ?.stop_posts?.sort(
@@ -346,6 +330,24 @@ export default function Stops() {
                         </div>
                       ))}
                   </div>
+
+                <div className="border-t pt-4">
+                  <h3 className="font-medium mb-4">Stop Chat</h3>
+                  <form onSubmit={handleCreatePost} className="space-y-4 mb-6">
+                    <Textarea
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Write a message..."
+                    />
+                    <Button
+                      type="submit"
+                      disabled={createStopPostMutation.isPending}
+                    >
+                      Post Message
+                    </Button>
+                  </form>
+
+
                 </div>
               </>
             )}
