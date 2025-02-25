@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -58,7 +57,12 @@ export default function Stops() {
           )
         `)
         .order("name");
-      if (error) throw error;
+
+      if (error) {
+        console.error("Supabase query error:", error);
+        throw error;
+      }
+
       return data;
     },
   });
@@ -66,11 +70,12 @@ export default function Stops() {
   // Get unique destinations for dropdowns
   const uniqueDestinations = Array.from(new Set(stops?.map((stop) => stop.name) || []));
 
+
   // Filter stops based on selected destinations
   const filteredStops = stops?.filter((stop) => {
     if (!startDestination || !endDestination) return true;
     return stop.start_point === startDestination && stop.end_point === endDestination;
-  });
+  }) || [];
 
   // Real-time updates subscription
   useEffect(() => {
@@ -208,10 +213,10 @@ export default function Stops() {
           <p>Loading stops...</p>
         ) : error ? (
           <p className="text-red-500">Error loading stops.</p>
-        ) : filteredStops?.length === 0 ? (
+        ) : filteredStops.length === 0 ? (
           <p className="text-gray-500">No stops found for the selected route.</p>
         ) : (
-          filteredStops?.map((stop) => {
+          filteredStops.map((stop) => {
             const waitingCount = stop.stop_waiting?.length || 0;
             const waitingColor = getWaitingColor(waitingCount);
             
