@@ -139,7 +139,7 @@ const Profile = () => {
       const updates = {
         ...profile,
         avatar_url: publicUrl,
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       };
 
       const { error: updateError } = await supabase
@@ -170,7 +170,7 @@ const Profile = () => {
         last_name: profile?.last_name,
         avatar_url: profile?.avatar_url,
         preferred_transport: profile?.preferred_transport,
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       };
 
       const { error } = await supabase.from('profiles').upsert(updates);
