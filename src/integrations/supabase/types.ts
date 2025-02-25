@@ -305,6 +305,79 @@ export type Database = {
           },
         ]
       }
+      stop_posts: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          stop_id: string
+          transport_waiting_for: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          stop_id: string
+          transport_waiting_for?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          stop_id?: string
+          transport_waiting_for?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stop_posts_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stop_waiting: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          stop_id: string
+          transport_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          stop_id: string
+          transport_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          stop_id?: string
+          transport_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stop_waiting_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stops: {
         Row: {
           created_at: string | null
@@ -476,6 +549,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_waiting: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       cleanup_old_posts: {
         Args: Record<PropertyKey, never>
         Returns: undefined
