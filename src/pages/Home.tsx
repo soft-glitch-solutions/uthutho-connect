@@ -27,7 +27,7 @@ export default function Home() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, favorites')
+        .select('first_name, selected_title, favorites')
         .eq('id', (await supabase.auth.getSession()).data.session?.user.id)
         .single();
 
@@ -160,6 +160,7 @@ export default function Home() {
               <Plus className="w-4 h-4" />
             </Button>
           </DialogTrigger>
+
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Favorite</DialogTitle>
@@ -183,7 +184,7 @@ export default function Home() {
           </DialogContent>
         </Dialog>
       </div>
-
+      <h3 className="font-semibold">The {userProfile?.selected_title || "User"}! </h3>
       {/* Favorites List */}
       <div className="space-y-2">
         <h3 className="font-semibold">Your Favorites</h3>
