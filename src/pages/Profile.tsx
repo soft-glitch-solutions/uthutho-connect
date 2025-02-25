@@ -2,22 +2,22 @@ import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton"; // Add this import
+import { Skeleton } from "@/components/ui/skeleton";
+import { ProfileAvatar } from '@/components/profile/ProfileAvatar';
+import { ProfileForm } from '@/components/profile/ProfileForm';
+import { GamificationSection } from '@/components/profile/GamificationSection';
 
 interface Profile {
   id: string;
-  first_name: string;
-  last_name: string;
-  avatar_url: string;
-  preferred_transport: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  preferred_transport: string | null;
   points: number;
   titles: string[];
-  selected_title: string;
+  selected_title: string | null;
 }
 
 interface Title {
@@ -26,16 +26,11 @@ interface Title {
   points_required: number;
 }
 
-const Profile: React.FC = () => {
+const Profile = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [titles, setTitles] = useState<Title[]>([]); // All available titles
-  const [activeTab, setActiveTab] = useState<string>('gamification'); // Active tab state
-
-  // Transport options for the dropdown
-  const transportOptions = ['train', 'taxi', 'bus'];
+  const [titles, setTitles] = useState<Title[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -54,7 +49,6 @@ const Profile: React.FC = () => {
     }
   }, [session]);
 
-  // Fetch the user's profile
   const getProfile = async () => {
     try {
       setLoading(true);
@@ -80,7 +74,6 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Fetch all titles from Supabase
   const fetchTitles = async () => {
     try {
       const { data, error } = await supabase
@@ -89,23 +82,46 @@ const Profile: React.FC = () => {
         .order('points_required', { ascending: true });
 
       if (error) throw error;
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('points, titles')
+        .eq('id', session?.user?.id)
+        .single();
+
+      if (profileData) {
+        const newlyUnlockedTitles = data
+          .filter(title => 
+            title.points_required <= profileData.points && 
+            !profileData.titles.includes(title.title)
+          )
+          .map(title => title.title);
+
+        if (newlyUnlockedTitles.length > 0) {
+          const updatedTitles = [...(profileData.titles || []), ...newlyUnlockedTitles];
+          await supabase
+            .from('profiles')
+            .update({ titles: updatedTitles })
+            .eq('id', session?.user?.id);
+          
+          toast.success(`You've unlocked ${newlyUnlockedTitles.length} new title(s)!`);
+          getProfile();
+        }
+      }
+
       setTitles(data || []);
     } catch (error: any) {
       toast.error(error.message);
     }
   };
 
-  // Handle avatar upload
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setAvatarFile(file);
-
     try {
       setLoading(true);
 
-      // Upload the file to Supabase Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${session?.user.id}-${Date.now()}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
@@ -116,12 +132,10 @@ const Profile: React.FC = () => {
 
       if (uploadError) throw uploadError;
 
-      // Get the public URL of the uploaded file
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      // Update the profile with the new avatar URL
       const updates = {
         ...profile,
         avatar_url: publicUrl,
@@ -143,7 +157,6 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Update profile
   const updateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -163,7 +176,6 @@ const Profile: React.FC = () => {
       const { error } = await supabase.from('profiles').upsert(updates);
 
       if (error) throw error;
-
       toast.success('Profile updated successfully!');
     } catch (error: any) {
       toast.error(error.message);
@@ -172,38 +184,22 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Handle title selection
   const handleSelectTitle = async (title: string) => {
     try {
       setLoading(true);
-
-      // Fetch the required points for the selected title
-      const { data: titleData, error: titleError } = await supabase
-        .from('titles')
-        .select('points_required')
-        .eq('title', title)
-        .single();
-
-      if (titleError) throw titleError;
-
-      // Check if the user has the required points and has earned the title
-      if (
-        profile?.points >= titleData.points_required &&
-        profile?.titles.includes(title)
-      ) {
-        // Update the user's selected title
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ selected_title: title })
-          .eq('id', session?.user.id);
-
-        if (updateError) throw updateError;
-
-        setProfile((prev) => ({ ...prev!, selected_title: title }));
-        toast.success('Title updated successfully!');
-      } else {
-        toast.error('You do not meet the requirements for this title.');
+      if (!profile?.titles?.includes(title)) {
+        throw new Error('You have not unlocked this title yet.');
       }
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ selected_title: title })
+        .eq('id', session?.user.id);
+
+      if (updateError) throw updateError;
+
+      setProfile((prev) => ({ ...prev!, selected_title: title }));
+      toast.success('Title updated successfully!');
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -211,12 +207,14 @@ const Profile: React.FC = () => {
     }
   };
 
+  if (!profile) return null;
+
   return (
     <div className="flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md p-6 bg-background/50 backdrop-blur-sm border border-primary/20">
         <h1 className="text-2xl font-bold text-center mb-6">Your Profile</h1>
 
-        <Tabs defaultValue="gamification" onValueChange={setActiveTab}>
+        <Tabs defaultValue="gamification">
           <TabsList className="grid grid-cols-3">
             <TabsTrigger value="gamification">Rank</TabsTrigger>
             <TabsTrigger value="basic-info">Basic Info</TabsTrigger>
@@ -225,7 +223,6 @@ const Profile: React.FC = () => {
 
           {loading ? (
             <div className="space-y-4">
-              {/* Skeleton for Gamification Tab */}
               <TabsContent value="gamification">
                 <div className="space-y-4">
                   <Skeleton className="h-8 w-1/2 mx-auto" />
@@ -238,7 +235,6 @@ const Profile: React.FC = () => {
                 </div>
               </TabsContent>
 
-              {/* Skeleton for Basic Info Tab */}
               <TabsContent value="basic-info">
                 <div className="space-y-4">
                   <div className="flex flex-col items-center">
@@ -252,7 +248,6 @@ const Profile: React.FC = () => {
                 </div>
               </TabsContent>
 
-              {/* Skeleton for Achievements Tab */}
               <TabsContent value="achievements">
                 <div className="space-y-4">
                   <Skeleton className="h-8 w-1/2" />
@@ -265,160 +260,57 @@ const Profile: React.FC = () => {
               </TabsContent>
             </div>
           ) : (
-            profile && (
-              <>
-                {/* Gamification Tab */}
-                <TabsContent value="gamification">
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <p className="text-lg font-medium">Points: {profile.points}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Earn more points to unlock new titles!
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-medium">Select Your Title:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {titles.map((title) => (
-                          <button
-                            key={title.id}
-                            onClick={() => handleSelectTitle(title.title)}
-                            disabled={
-                              !profile.titles.includes(title.title) ||
-                              profile.points < title.points_required
-                            }
-                            className={`px-4 py-2 rounded-full border ${
-                              profile.titles.includes(title.title) &&
-                              profile.points >= title.points_required
-                                ? 'bg-primary text-white hover:bg-primary/90'
-                                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                            }`}
-                          >
-                            {title.title}
-                          </button>
-                        ))}
+            <>
+              <TabsContent value="gamification">
+                <GamificationSection 
+                  profile={profile}
+                  titles={titles}
+                  onSelectTitle={handleSelectTitle}
+                />
+              </TabsContent>
+
+              <TabsContent value="basic-info">
+                <ProfileAvatar 
+                  url={profile.avatar_url}
+                  firstName={profile.first_name}
+                  onUpload={handleAvatarUpload}
+                />
+                <ProfileForm 
+                  profile={profile}
+                  isLoading={loading}
+                  onSubmit={updateProfile}
+                  onChange={setProfile}
+                />
+              </TabsContent>
+
+              <TabsContent value="achievements">
+                <div className="space-y-4">
+                  <p className="text-lg font-medium">Available Titles:</p>
+                  <div className="space-y-2">
+                    {titles.map((title) => (
+                      <div
+                        key={title.id}
+                        className="flex items-center justify-between p-2 rounded-lg bg-background"
+                      >
+                        <div>
+                          <p className="font-medium">{title.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Required: {title.points_required} points
+                          </p>
+                        </div>
+                        {profile.titles?.includes(title.title) ? (
+                          <span className="text-green-500">Unlocked</span>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            {title.points_required - (profile.points || 0)} points needed
+                          </span>
+                        )}
                       </div>
-                    </div>
+                    ))}
                   </div>
-                </TabsContent>
-
-                {/* Basic Info Tab */}
-                <TabsContent value="basic-info">
-                  <form onSubmit={updateProfile} className="space-y-4">
-                    <div className="flex flex-col items-center">
-                      <Avatar className="w-24 h-24 mb-4">
-                        <AvatarImage src={profile.avatar_url} alt="Profile Picture" />
-                        <AvatarFallback>
-                          {profile.first_name?.charAt(0) || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarUpload}
-                        className="hidden"
-                        id="avatar-upload"
-                      />
-                      <label
-                        htmlFor="avatar-upload"
-                        className="text-sm text-primary cursor-pointer hover:underline"
-                      >
-                        Upload new avatar
-                      </label>
-                    </div>
-
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-medium">
-                        Email
-                      </label>
-                      <Input
-                        id="email"
-                        type="text"
-                        value={session?.user.email || ''}
-                        disabled
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="first_name" className="block text-sm font-medium">
-                        First Name
-                      </label>
-                      <Input
-                        id="first_name"
-                        type="text"
-                        value={profile.first_name || ''}
-                        onChange={(e) =>
-                          setProfile({ ...profile, first_name: e.target.value })
-                        }
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="last_name" className="block text-sm font-medium">
-                        Last Name
-                      </label>
-                      <Input
-                        id="last_name"
-                        type="text"
-                        value={profile.last_name || ''}
-                        onChange={(e) =>
-                          setProfile({ ...profile, last_name: e.target.value })
-                        }
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="preferred_transport" className="block text-sm font-medium">
-                        Preferred Transport
-                      </label>
-                      <select
-                        id="preferred_transport"
-                        value={profile.preferred_transport || ''}
-                        onChange={(e) =>
-                          setProfile({ ...profile, preferred_transport: e.target.value })
-                        }
-                        className="mt-1 block w-full p-2 border border-primary/20 rounded-md bg-background"
-                      >
-                        <option value="" disabled>Select an option</option>
-                        {transportOptions.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full bg-primary hover:bg-primary/90"
-                      disabled={loading}
-                    >
-                      {loading ? 'Updating...' : 'Update Profile'}
-                    </Button>
-                  </form>
-                </TabsContent>
-
-                {/* Achievements Tab */}
-                <TabsContent value="achievements">
-                  <div className="space-y-4">
-                    <p className="text-lg font-medium">All Titles:</p>
-                    <ul className="list-disc pl-6">
-                      {titles.map((title) => (
-                        <li key={title.id}>
-                          {title.title} - {title.points_required} points
-                          {profile.titles.includes(title.title) && (
-                            <span className="ml-2 text-green-500">✓ Unlocked</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </TabsContent>
-              </>
-            )
+                </div>
+              </TabsContent>
+            </>
           )}
         </Tabs>
       </Card>

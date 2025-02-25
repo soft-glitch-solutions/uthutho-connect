@@ -87,26 +87,38 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          favorites: Json | null
           first_name: string | null
           id: string
           last_name: string | null
+          points: number | null
           preferred_transport: string | null
+          selected_title: string | null
+          titles: string[] | null
           updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
+          favorites?: Json | null
           first_name?: string | null
           id: string
           last_name?: string | null
+          points?: number | null
           preferred_transport?: string | null
+          selected_title?: string | null
+          titles?: string[] | null
           updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
+          favorites?: Json | null
           first_name?: string | null
           id?: string
           last_name?: string | null
+          points?: number | null
           preferred_transport?: string | null
+          selected_title?: string | null
+          titles?: string[] | null
           updated_at?: string | null
         }
         Relationships: []
@@ -190,6 +202,68 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      stops: {
+        Row: {
+          created_at: string | null
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          order_number: number
+          route_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          order_number: number
+          route_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          order_number?: number
+          route_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_route"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      titles: {
+        Row: {
+          created_at: string | null
+          id: number
+          points_required: number
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          points_required: number
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          points_required?: number
+          title?: string
+        }
+        Relationships: []
       }
       traffic_reports: {
         Row: {
