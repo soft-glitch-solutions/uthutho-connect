@@ -19,6 +19,7 @@ import HubsDetials from "./pages/HubsDetials";
 import RouteDetails from "./pages/RoutesDetials";
 import AddFavorites from "./pages/AddFavorites";
 import FavoriteDetails from './pages/FavoriteDetails';
+import Feed from './pages/Feed';
 
 const queryClient = new QueryClient();
 
@@ -32,8 +33,9 @@ const App = () => (
           <Route path="/" element={<Onboarding />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/home" element={<MainLayout><Home /></MainLayout>} />
+          <Route path="/feed" element={<MainLayout><Feed /></MainLayout>} />
           <Route path="/addFavourties" element={<MainLayout><AddFavorites /></MainLayout>} />
-          <Route path="/favorites/:favoriteId" element={<FavoriteDetails />} />
+          <Route path="/favorites/:favoriteId" element={<MainLayout><FavoriteDetails /></MainLayout>} />
           <Route path="/hubs" element={<MainLayout><Hubs /></MainLayout>} />
           <Route path="/hubs/:hubId" element={<MainLayout><HubsDetials /></MainLayout>} />
           <Route path="/routes" element={<MainLayout><TransportRoutes /></MainLayout>} />

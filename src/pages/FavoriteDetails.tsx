@@ -1,38 +1,113 @@
+
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 export default function FavoriteDetails() {
   const { favoriteId } = useParams<{ favoriteId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [newMessage, setNewMessage] = useState('');
 
   // Fetch details of the selected favorite
   const { data: favoriteDetails, isLoading } = useQuery({
     queryKey: ['favorite-details', favoriteId],
     queryFn: async () => {
-      // Fetch details from Supabase (e.g., stops, hubs, or routes)
-      const { data: stop } = await supabase
-        .from('stops')
-        .select('*')
-        .eq('name', favoriteId)
-        .single();
-
       const { data: hub } = await supabase
         .from('hubs')
         .select('*')
         .eq('name', favoriteId)
         .single();
 
-      const { data: route } = await supabase
-        .from('routes')
-        .select('*')
-        .eq('name', favoriteId)
+      return hub;
+    },
+  });
+
+  // Fetch hub posts
+  const { data: posts } = useQuery({
+    queryKey: ['hub-posts', favoriteDetails?.id],
+    enabled: !!favoriteDetails?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('hub_posts')
+        .select(`
+          *,
+          post_comments (
+            id,
+            content,
+            created_at,
+            user_id
+          ),
+          post_reactions (
+            id,
+            reaction_type,
+            user_id
+          )
+        `)
+        .eq('hub_id', favoriteDetails.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Subscribe to real-time updates
+  useEffect(() => {
+    if (!favoriteDetails?.id) return;
+
+    const channel = supabase
+      .channel('hub-posts')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'hub_posts',
+          filter: `hub_id=eq.${favoriteDetails.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['hub-posts', favoriteDetails.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [favoriteDetails?.id, queryClient]);
+
+  // Create new post mutation
+  const createPostMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const { data: userSession } = await supabase.auth.getSession();
+      if (!userSession?.session?.user.id) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('hub_posts')
+        .insert({
+          content,
+          hub_id: favoriteDetails?.id,
+          user_id: userSession.session.user.id,
+        })
+        .select()
         .single();
 
-      return stop || hub || route || null;
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      setNewMessage('');
+      toast.success('Message sent successfully!');
+    },
+    onError: (error) => {
+      toast.error(`Error sending message: ${error.message}`);
     },
   });
 
@@ -45,10 +120,11 @@ export default function FavoriteDetails() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
       <Button onClick={() => navigate(-1)} className="mb-4">
         Back
       </Button>
+
       <Card className="p-6">
         <h1 className="text-2xl font-bold mb-4">{favoriteDetails.name}</h1>
         <p className="text-muted-foreground">
@@ -57,8 +133,42 @@ export default function FavoriteDetails() {
         <p className="text-muted-foreground">
           Location: {favoriteDetails.latitude}, {favoriteDetails.longitude}
         </p>
-        {/* Add more details as needed */}
       </Card>
+
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Hub Chat</h2>
+        
+        <div className="space-y-4">
+          <Card className="p-4">
+            <Textarea
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type your message..."
+              className="mb-4"
+            />
+            <Button 
+              onClick={() => createPostMutation.mutate(newMessage)}
+              disabled={createPostMutation.isPending || !newMessage.trim()}
+            >
+              Send Message
+            </Button>
+          </Card>
+
+          {posts?.map((post) => (
+            <Card key={post.id} className="p-4">
+              <p>{post.content}</p>
+              <div className="flex items-center gap-4 mt-2">
+                <Button variant="ghost" size="sm">
+                  💬 {post.post_comments?.length || 0}
+                </Button>
+                <Button variant="ghost" size="sm">
+                  ❤️ {post.post_reactions?.length || 0}
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
