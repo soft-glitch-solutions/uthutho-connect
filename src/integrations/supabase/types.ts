@@ -42,6 +42,13 @@ export type Database = {
             referencedRelation: "hubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "hub_posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       hub_requests: {
@@ -91,6 +98,7 @@ export type Database = {
           address: string | null
           created_at: string | null
           id: string
+          image: string | null
           latitude: number
           longitude: number
           name: string
@@ -101,6 +109,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           id?: string
+          image?: string | null
           latitude: number
           longitude: number
           name: string
@@ -111,6 +120,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           id?: string
+          image?: string | null
           latitude?: number
           longitude?: number
           name?: string
@@ -152,6 +162,13 @@ export type Database = {
             referencedRelation: "hub_posts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "post_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       post_reactions: {
@@ -182,6 +199,13 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "hub_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -341,6 +365,13 @@ export type Database = {
             referencedRelation: "stops"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "stop_posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       stop_waiting: {
@@ -374,6 +405,13 @@ export type Database = {
             columns: ["stop_id"]
             isOneToOne: false
             referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stop_waiting_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

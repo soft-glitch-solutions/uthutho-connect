@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -5,16 +6,19 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { CheckCircle } from "lucide-react"; // For the "Got Picked Up" marker
+import { CheckCircle, Loader2, Star } from "lucide-react";
+import { isWithinRadius } from "@/utils/location";
 
 const TRANSPORT_TYPES = ["Bus 🚌", "Train 🚂", "Taxi 🚕"];
 const WAITING_COLORS = {
@@ -24,17 +28,43 @@ const WAITING_COLORS = {
 };
 
 export default function Stops() {
-  const [startDestination, setStartDestination] = useState<string | null>(null);
-  const [endDestination, setEndDestination] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedStop, setSelectedStop] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [selectedTransport, setSelectedTransport] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch all stops
-  const { data: stops, isLoading, error } = useQuery({
+  // Get user's location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          setLocationError("Unable to retrieve your location.");
+          console.error(error);
+        }
+      );
+    } else {
+      setLocationError("Geolocation is not supported by your browser.");
+    }
+  }, []);
+
+  // Fetch all stops and waiting status
+  const { data: stops, isLoading } = useQuery({
     queryKey: ["stops"],
     queryFn: async () => {
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("favorites")
+        .single();
+
       const { data, error } = await supabase
         .from("stops")
         .select(`
@@ -56,15 +86,14 @@ export default function Stops() {
               avatar_url
             )
           )
-        `)
-        .order("name");
+        `);
 
-      if (error) {
-        console.error("Supabase query error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      return data;
+      return data?.map(stop => ({
+        ...stop,
+        isFavorite: userProfile?.favorites?.includes(stop.id) || false,
+      }));
     },
   });
 
@@ -76,15 +105,6 @@ export default function Stops() {
   const isUserWaiting = stops?.some((stop) =>
     stop.stop_waiting?.some((w: any) => w.user_id === userId)
   );
-
-  // Get unique destinations for dropdowns
-  const uniqueDestinations = Array.from(new Set(stops?.map((stop) => stop.name) || []));
-
-  // Filter stops based on selected destinations
-  const filteredStops = stops?.filter((stop) => {
-    if (!startDestination || !endDestination) return true;
-    return stop.start_point === startDestination && stop.end_point === endDestination;
-  }) || [];
 
   // Real-time updates subscription
   useEffect(() => {
@@ -122,18 +142,26 @@ export default function Stops() {
   // Mark as waiting mutation
   const markAsWaitingMutation = useMutation({
     mutationFn: async ({ stopId, transportType }: { stopId: string, transportType: string }) => {
-      if (isUserWaiting) {
-        throw new Error("You are already waiting at another stop.");
-      }
+      if (!userLocation) throw new Error("Location required to mark as waiting");
 
-      const { data: userSession } = await supabase.auth.getSession();
-      if (!userSession?.session?.user.id) throw new Error("Not authenticated");
+      const stop = stops?.find(s => s.id === stopId);
+      if (!stop) throw new Error("Stop not found");
+
+      // Check if user is within 500m of the stop
+      if (!isWithinRadius(
+        userLocation.lat,
+        userLocation.lng,
+        stop.latitude,
+        stop.longitude
+      )) {
+        throw new Error("You must be within 500m of the stop to mark as waiting");
+      }
 
       const { error } = await supabase
         .from("stop_waiting")
         .insert({
           stop_id: stopId,
-          user_id: userSession.session.user.id,
+          user_id: userId,
           transport_type: transportType,
         });
 
@@ -144,21 +172,18 @@ export default function Stops() {
       toast.success("Marked as waiting!");
     },
     onError: (error) => {
-      toast.error(`Error marking as waiting: ${error.message}`);
+      toast.error(error.message);
     },
   });
 
   // Remove waiting status mutation
   const removeWaitingMutation = useMutation({
     mutationFn: async ({ stopId }: { stopId: string }) => {
-      const { data: userSession } = await supabase.auth.getSession();
-      if (!userSession?.session?.user.id) throw new Error("Not authenticated");
-
       const { error } = await supabase
         .from("stop_waiting")
         .delete()
         .eq("stop_id", stopId)
-        .eq("user_id", userSession.session.user.id);
+        .eq("user_id", userId);
 
       if (error) throw error;
     },
@@ -171,151 +196,140 @@ export default function Stops() {
     },
   });
 
-  // Stop post mutation
-  const createStopPostMutation = useMutation({
-    mutationFn: async ({ stopId, content }: { stopId: string, content: string }) => {
-      const { data: userSession } = await supabase.auth.getSession();
-      if (!userSession?.session?.user.id) throw new Error("Not authenticated");
+  // Toggle favorite mutation
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async (stopId: string) => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("favorites")
+        .single();
+
+      const favorites = profile?.favorites || [];
+      const updatedFavorites = favorites.includes(stopId)
+        ? favorites.filter((id: string) => id !== stopId)
+        : [...favorites, stopId];
 
       const { error } = await supabase
-        .from("stop_posts")
-        .insert({
-          stop_id: stopId,
-          user_id: userSession.session.user.id,
-          content,
-          transport_waiting_for: selectedTransport,
-        });
+        .from("profiles")
+        .update({ favorites: updatedFavorites })
+        .eq("id", userId);
 
       if (error) throw error;
+      return { stopId, isFavorite: !favorites.includes(stopId) };
     },
-    onSuccess: () => {
+    onSuccess: ({ stopId, isFavorite }) => {
       queryClient.invalidateQueries({ queryKey: ["stops"] });
-      setNewMessage("");
-      toast.success("Message posted successfully!");
+      toast.success(isFavorite ? "Added to favorites" : "Removed from favorites");
     },
     onError: (error) => {
-      toast.error(`Error posting message: ${error.message}`);
+      toast.error(`Error updating favorites: ${error.message}`);
     },
   });
 
-  const getWaitingColor = (waitingCount: number) => {
-    if (waitingCount <= 3) return WAITING_COLORS.low;
-    if (waitingCount <= 7) return WAITING_COLORS.moderate;
-    return WAITING_COLORS.high;
-  };
-
-  const handleCreatePost = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedStop || !newMessage.trim()) return;
-    createStopPostMutation.mutate({ stopId: selectedStop, content: newMessage });
-  };
+  // Filter stops based on search query
+  const filteredStops = stops?.filter((stop) =>
+    stop.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <h1 className="text-2xl font-bold">Transport Stops</h1>
-
-      {/* Dropdown Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <Select onValueChange={setStartDestination} value={startDestination || ""}>
-          <SelectTrigger className="w-full sm:w-1/2">
-            <SelectValue placeholder="Select Start Destination" />
-          </SelectTrigger>
-          <SelectContent>
-            {uniqueDestinations.map((destination) => (
-              <SelectItem key={destination} value={destination}>
-                {destination}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select onValueChange={setEndDestination} value={endDestination || ""}>
-          <SelectTrigger className="w-full sm:w-1/2">
-            <SelectValue placeholder="Select End Destination" />
-          </SelectTrigger>
-          <SelectContent>
-            {uniqueDestinations.map((destination) => (
-              <SelectItem key={destination} value={destination}>
-                {destination}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">Transport Stops</h1>
+        <Input
+          placeholder="Search stops..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="max-w-xs"
+        />
       </div>
 
-      {/* Display Stops */}
+      {locationError && (
+        <Card className="p-4 text-red-500">{locationError}</Card>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
-          <p>Loading stops...</p>
-        ) : error ? (
-          <p className="text-red-500">Error loading stops.</p>
-        ) : filteredStops.length === 0 ? (
-          <p className="text-gray-500">No stops found for the selected route.</p>
+          <div className="col-span-full flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : filteredStops?.length === 0 ? (
+          <p className="col-span-full text-center text-muted-foreground">
+            No stops found
+          </p>
         ) : (
-          filteredStops.map((stop) => {
+          filteredStops?.map((stop) => {
             const waitingCount = stop.stop_waiting?.length || 0;
             const waitingColor = getWaitingColor(waitingCount);
-
-            // Check if the current user is waiting at this stop
-            const isUserWaitingAtThisStop = stop.stop_waiting?.some(
+            const isUserWaitingHere = stop.stop_waiting?.some(
               (w: any) => w.user_id === userId
             );
 
             return (
               <Card
                 key={stop.id}
-                className="p-4 cursor-pointer hover:bg-accent/5 transition-colors"
-                onClick={() => setSelectedStop(stop.id)}
+                className="p-4 space-y-4"
               >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between">
+                  <div>
                     <h3 className="font-semibold">{stop.name}</h3>
-                    <div className={`px-3 py-1 rounded-full text-white ${waitingColor}`}>
+                    <div className={`mt-1 px-3 py-1 rounded-full text-white inline-block ${waitingColor}`}>
                       {waitingCount} waiting
                     </div>
                   </div>
-
-                  {/* "Got Picked Up" Button */}
-                  {isUserWaitingAtThisStop && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeWaitingMutation.mutate({ stopId: stop.id });
-                      }}
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Got Picked Up
-                    </Button>
-                  )}
-
-                  <div className="flex flex-wrap gap-2">
-                    {TRANSPORT_TYPES.map((type) => {
-                      const typeWaiting = stop.stop_waiting?.filter(
-                        (w: any) => w.transport_type === type
-                      ).length || 0;
-
-                      return (
-                        <Button
-                          key={type}
-                          variant="outline"
-                          size="sm"
-                          disabled={isUserWaiting}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            markAsWaitingMutation.mutate({
-                              stopId: stop.id,
-                              transportType: type,
-                            });
-                          }}
-                        >
-                          {type} ({typeWaiting})
-                        </Button>
-                      );
-                    })}
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => toggleFavoriteMutation.mutate(stop.id)}
+                  >
+                    <Star
+                      className={`h-5 w-5 ${
+                        stop.isFavorite ? "fill-yellow-400 text-yellow-400" : ""
+                      }`}
+                    />
+                  </Button>
                 </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {TRANSPORT_TYPES.map((type) => {
+                    const typeWaiting = stop.stop_waiting?.filter(
+                      (w: any) => w.transport_type === type
+                    ).length || 0;
+
+                    return (
+                      <Button
+                        key={type}
+                        variant="outline"
+                        size="sm"
+                        disabled={isUserWaiting && !isUserWaitingHere}
+                        onClick={() =>
+                          isUserWaitingHere
+                            ? removeWaitingMutation.mutate({ stopId: stop.id })
+                            : markAsWaitingMutation.mutate({
+                                stopId: stop.id,
+                                transportType: type,
+                              })
+                        }
+                      >
+                        {isUserWaitingHere ? (
+                          <>
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Got Picked Up
+                          </>
+                        ) : (
+                          `${type} (${typeWaiting})`
+                        )}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="link"
+                  onClick={() => setSelectedStop(stop.id)}
+                  className="w-full"
+                >
+                  View Details & Chat
+                </Button>
               </Card>
             );
           })
@@ -327,6 +341,9 @@ export default function Stops() {
         <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Stop Details</DialogTitle>
+            <DialogDescription>
+              View stop information and chat with other commuters
+            </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-4">
@@ -411,4 +428,10 @@ export default function Stops() {
       </Dialog>
     </div>
   );
+}
+
+function getWaitingColor(waitingCount: number) {
+  if (waitingCount <= 3) return WAITING_COLORS.low;
+  if (waitingCount <= 7) return WAITING_COLORS.moderate;
+  return WAITING_COLORS.high;
 }
