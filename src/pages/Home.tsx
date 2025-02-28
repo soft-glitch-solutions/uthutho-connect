@@ -1,8 +1,9 @@
+
 import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,28 +14,55 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton"; // Add this import
-import { useNavigate } from "react-router-dom"; // Add this import
+import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom";
+import { isWithinRadius } from "@/utils/location";
 
 export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const navigate = useNavigate(); // Add this hook
+  const navigate = useNavigate();
 
   // Fetch the user's profile (first name and favorites)
   const { data: userProfile, isLoading: isProfileLoading } = useQuery({
     queryKey: ['user-profile'],
     queryFn: async () => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('first_name, selected_title, favorites')
-        .eq('id', (await supabase.auth.getSession()).data.session?.user.id)
+        .eq('id', userId)
         .single();
 
       if (error) throw error;
-      return data;
+      return {
+        ...data,
+        favorites: parseJsonArray(data.favorites)
+      };
     },
   });
+
+  // Helper function to safely parse JSON data
+  const parseJsonArray = (jsonData: any): string[] => {
+    try {
+      if (Array.isArray(jsonData)) {
+        return jsonData;
+      }
+      if (typeof jsonData === 'string') {
+        return JSON.parse(jsonData);
+      }
+      return [];
+    } catch (error) {
+      console.error("Error parsing JSON:", error);
+      return [];
+    }
+  };
 
   // Fetch the user's current location
   useEffect(() => {
@@ -83,6 +111,9 @@ export default function Home() {
     let minDistance = Infinity;
 
     locations.forEach((location) => {
+      // Skip locations without coordinates
+      if (!location.latitude || !location.longitude) return;
+      
       const distance = calculateDistance(
         userLocation.lat,
         userLocation.lng,
@@ -116,8 +147,13 @@ export default function Home() {
 
   // Add a favorite
   const handleAddFavorite = async (favorite: string) => {
-    const userId = (await supabase.auth.getSession()).data.session?.user.id;
-    if (!userId) return;
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session.session?.user.id;
+    
+    if (!userId) {
+      toast.error("You must be logged in to add favorites");
+      return;
+    }
 
     try {
       // Fetch the user's current favorites
@@ -129,8 +165,11 @@ export default function Home() {
 
       if (fetchError) throw fetchError;
 
+      // Parse existing favorites safely
+      const currentFavorites = parseJsonArray(profile.favorites);
+      
       // Add the new favorite to the list
-      const updatedFavorites = [...(profile.favorites || []), favorite];
+      const updatedFavorites = [...currentFavorites, favorite];
 
       // Update the profile with the new favorites
       const { error: updateError } = await supabase
@@ -146,6 +185,23 @@ export default function Home() {
       toast.error('An error occurred. Please try again.');
     }
   };
+
+  // Find stops that the user is close enough to mark as waiting
+  const { data: closeStops } = useQuery({
+    queryKey: ['close-stops', userLocation],
+    queryFn: async () => {
+      if (!userLocation) return [];
+
+      const { data } = await supabase.from('stops').select('*');
+      
+      if (!data) return [];
+      
+      return data.filter(stop => 
+        isWithinRadius(userLocation.lat, userLocation.lng, stop.latitude, stop.longitude)
+      );
+    },
+    enabled: !!userLocation,
+  });
 
   return (
     <div className="space-y-6">
@@ -185,6 +241,7 @@ export default function Home() {
         </Dialog>
       </div>
       <h3 className="font-semibold">The {userProfile?.selected_title || "User"}! </h3>
+      
       {/* Favorites List */}
       <div className="space-y-2">
         <h3 className="font-semibold">Your Favorites</h3>
@@ -194,13 +251,13 @@ export default function Home() {
               <Skeleton key={index} className="h-24 w-full rounded-lg" />
             ))}
           </div>
-        ) : userProfile?.favorites?.length ? (
+        ) : userProfile?.favorites && userProfile.favorites.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {userProfile.favorites.map((favorite, index) => (
+            {userProfile.favorites.map((favorite: string, index: number) => (
               <Card
                 key={index}
                 className="p-4 cursor-pointer hover:bg-primary/10 transition-colors"
-                onClick={() => navigate(`/favorites/${favorite}`)} // Navigate to the favorite details page
+                onClick={() => navigate(`/favorites/${favorite}`)}
               >
                 <p className="text-lg font-medium">{favorite}</p>
               </Card>
@@ -210,6 +267,35 @@ export default function Home() {
           <p className="text-muted-foreground">No favorites added yet.</p>
         )}
       </div>
+
+      {/* Nearby Stops You Can Wait At */}
+      {closeStops && closeStops.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="font-semibold">Nearby Stops You Can Wait At</h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {closeStops.map((stop) => (
+              <Card 
+                key={stop.id} 
+                className="p-4 cursor-pointer hover:bg-primary/10 transition-colors"
+                onClick={() => navigate('/stops')}
+              >
+                <div className="flex items-center space-x-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  <p className="text-lg font-medium">{stop.name}</p>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Within waiting distance ({calculateDistance(
+                    userLocation!.lat,
+                    userLocation!.lng,
+                    stop.latitude,
+                    stop.longitude
+                  ).toFixed(2)} km)
+                </p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Nearby you</h1>

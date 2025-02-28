@@ -19,6 +19,7 @@ import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { CheckCircle, Loader2, Star } from "lucide-react";
 import { isWithinRadius } from "@/utils/location";
+import { Json } from "@/integrations/supabase/types";
 
 const TRANSPORT_TYPES = ["Bus 🚌", "Train 🚂", "Taxi 🚕"];
 const WAITING_COLORS = {
@@ -90,10 +91,23 @@ export default function Stops() {
 
       if (error) throw error;
 
+      // Parse favorites safely
+      let favorites: string[] = [];
+      if (userProfile?.favorites) {
+        try {
+          if (typeof userProfile.favorites === 'string') {
+            favorites = JSON.parse(userProfile.favorites);
+          } else if (Array.isArray(userProfile.favorites)) {
+            favorites = userProfile.favorites as string[];
+          }
+        } catch (e) {
+          console.error("Error parsing favorites:", e);
+        }
+      }
+
       return data?.map(stop => ({
         ...stop,
-        isFavorite: Array.isArray(userProfile?.favorites) && 
-          userProfile?.favorites.includes(stop.id),
+        isFavorite: favorites.includes(stop.id),
       }));
     },
   });
@@ -244,7 +258,20 @@ export default function Stops() {
         .select("favorites")
         .single();
 
-      const favorites = Array.isArray(profile?.favorites) ? profile.favorites : [];
+      // Parse favorites safely
+      let favorites: string[] = [];
+      if (profile?.favorites) {
+        try {
+          if (typeof profile.favorites === 'string') {
+            favorites = JSON.parse(profile.favorites);
+          } else if (Array.isArray(profile.favorites)) {
+            favorites = profile.favorites as string[];
+          }
+        } catch (e) {
+          console.error("Error parsing favorites:", e);
+        }
+      }
+
       const updatedFavorites = favorites.includes(stopId)
         ? favorites.filter((id: string) => id !== stopId)
         : [...favorites, stopId];
@@ -384,7 +411,7 @@ export default function Stops() {
       </div>
 
       {/* Stop Details Dialog */}
-      <Dialog open={!!selectedStop} onOpenChange={() => setSelectedStop(null)}>
+      <Dialog open={!!selectedStop} onOpenChange={(open) => !open && setSelectedStop(null)}>
         <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Stop Details</DialogTitle>
