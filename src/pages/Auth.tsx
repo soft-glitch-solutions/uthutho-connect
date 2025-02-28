@@ -8,13 +8,16 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [preferredTransport, setPreferredTransport] = useState("");
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,12 +45,18 @@ export default function Auth() {
     setIsLoading(true);
     
     try {
+      if (!firstName.trim()) {
+        throw new Error("First name is required");
+      }
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: name,
+            first_name: firstName,
+            last_name: lastName,
+            preferred_transport: preferredTransport || null,
           },
         },
       });
@@ -115,12 +124,33 @@ export default function Auth() {
               <form onSubmit={handleSignUp} className="space-y-4">
                 <Input
                   type="text"
-                  placeholder="Full Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  placeholder="First Name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
                   disabled={isLoading}
                   required
                 />
+                <Input
+                  type="text"
+                  placeholder="Last Name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  disabled={isLoading}
+                />
+                <Select
+                  value={preferredTransport}
+                  onValueChange={setPreferredTransport}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Preferred Transport" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bus">Bus 🚌</SelectItem>
+                    <SelectItem value="train">Train 🚂</SelectItem>
+                    <SelectItem value="taxi">Taxi 🚕</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Input
                   type="email"
                   placeholder="Email"
