@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +20,7 @@ import RouteDetails from "./pages/RoutesDetials";
 import AddFavorites from "./pages/AddFavorites";
 import FavoriteDetails from './pages/FavoriteDetails';
 import Feed from './pages/Feed';
+import Store from './pages/Store';
 import PrivateRoute from "@/components/PrivateRoute"; // Import the PrivateRoute component
 
 
@@ -83,6 +85,10 @@ const App = () => (
           <Route 
             path="/profile" 
             element={<PrivateRoute><MainLayout><Profile /></MainLayout></PrivateRoute>} 
+          />
+          <Route 
+            path="/store" 
+            element={<PrivateRoute><MainLayout><Store /></MainLayout></PrivateRoute>} 
           />
           
           {/* Catch-all for undefined routes */}

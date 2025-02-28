@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -68,6 +69,11 @@ export function MainLayout({ children }: MainLayoutProps) {
     }
   };
 
+  // Handle navigation to store
+  const navigateToStore = () => {
+    navigate("/store");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation */}
@@ -120,7 +126,12 @@ export function MainLayout({ children }: MainLayoutProps) {
             ) : (
               <>
                 <span className="font-semibold text-lg">{userPoints}</span>
-                <Button variant="ghost" size="icon" onClick={() => toast.success("Adding points feature coming soon!")}>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={navigateToStore}
+                  aria-label="Go to store"
+                >
                   <PlusCircle className="h-5 w-5" />
                 </Button>
               </>
