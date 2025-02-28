@@ -129,6 +129,131 @@ export type Database = {
         }
         Relationships: []
       }
+      login_streaks: {
+        Row: {
+          created_at: string
+          current_streak: number
+          id: string
+          last_login: string
+          max_streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_login?: string
+          max_streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_login?: string
+          max_streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "login_streaks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_progress: {
+        Row: {
+          created_at: string
+          current_count: number
+          id: string
+          is_completed: boolean
+          last_updated: string
+          mission_id: string
+          reward_claimed: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_count?: number
+          id?: string
+          is_completed?: boolean
+          last_updated?: string
+          mission_id: string
+          reward_claimed?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_count?: number
+          id?: string
+          is_completed?: boolean
+          last_updated?: string
+          mission_id?: string
+          reward_claimed?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_progress_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      missions: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          points_reward: number
+          requirement_count: number
+          requirement_type: string
+          title: string
+          title_reward: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          points_reward: number
+          requirement_count: number
+          requirement_type: string
+          title: string
+          title_reward?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          points_reward?: number
+          requirement_count?: number
+          requirement_type?: string
+          title?: string
+          title_reward?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       post_comments: {
         Row: {
           content: string
@@ -392,6 +517,63 @@ export type Database = {
           },
         ]
       }
+      stop_requests: {
+        Row: {
+          cost: number | null
+          created_at: string
+          description: string | null
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          route_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          route_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          route_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stop_requests_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stop_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stop_waiting: {
         Row: {
           created_at: string | null
@@ -436,6 +618,7 @@ export type Database = {
       }
       stops: {
         Row: {
+          cost: number | null
           created_at: string | null
           id: string
           image_url: string | null
@@ -447,6 +630,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          cost?: number | null
           created_at?: string | null
           id?: string
           image_url?: string | null
@@ -458,6 +642,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          cost?: number | null
           created_at?: string | null
           id?: string
           image_url?: string | null
