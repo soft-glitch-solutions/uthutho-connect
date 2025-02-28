@@ -92,14 +92,23 @@ export default function Stops() {
 
       return data?.map(stop => ({
         ...stop,
-        isFavorite: userProfile?.favorites?.includes(stop.id) || false,
+        isFavorite: Array.isArray(userProfile?.favorites) && 
+          userProfile?.favorites.includes(stop.id),
       }));
     },
   });
 
   // Get the current user's waiting status
-  const { data: userSession } = supabase.auth.getSession();
-  const userId = userSession?.session?.user.id;
+  const getUserId = async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user.id;
+  };
+  
+  const [userId, setUserId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    getUserId().then(id => setUserId(id));
+  }, []);
 
   // Check if the user is already waiting at any stop
   const isUserWaiting = stops?.some((stop) =>
@@ -143,6 +152,7 @@ export default function Stops() {
   const markAsWaitingMutation = useMutation({
     mutationFn: async ({ stopId, transportType }: { stopId: string, transportType: string }) => {
       if (!userLocation) throw new Error("Location required to mark as waiting");
+      if (!userId) throw new Error("You must be logged in to mark as waiting");
 
       const stop = stops?.find(s => s.id === stopId);
       if (!stop) throw new Error("Stop not found");
@@ -179,6 +189,8 @@ export default function Stops() {
   // Remove waiting status mutation
   const removeWaitingMutation = useMutation({
     mutationFn: async ({ stopId }: { stopId: string }) => {
+      if (!userId) throw new Error("You must be logged in to update waiting status");
+      
       const { error } = await supabase
         .from("stop_waiting")
         .delete()
@@ -196,15 +208,43 @@ export default function Stops() {
     },
   });
 
+  // Post message mutation
+  const createStopPostMutation = useMutation({
+    mutationFn: async ({ stopId, content }: { stopId: string, content: string }) => {
+      if (!userId) throw new Error("You must be logged in to post messages");
+      
+      const { error } = await supabase
+        .from("stop_posts")
+        .insert({
+          stop_id: stopId,
+          user_id: userId,
+          content,
+          transport_waiting_for: selectedTransport,
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stops"] });
+      setNewMessage("");
+      toast.success("Message posted successfully!");
+    },
+    onError: (error) => {
+      toast.error(`Error posting message: ${error.message}`);
+    },
+  });
+
   // Toggle favorite mutation
   const toggleFavoriteMutation = useMutation({
     mutationFn: async (stopId: string) => {
+      if (!userId) throw new Error("You must be logged in to add favorites");
+      
       const { data: profile } = await supabase
         .from("profiles")
         .select("favorites")
         .single();
 
-      const favorites = profile?.favorites || [];
+      const favorites = Array.isArray(profile?.favorites) ? profile.favorites : [];
       const updatedFavorites = favorites.includes(stopId)
         ? favorites.filter((id: string) => id !== stopId)
         : [...favorites, stopId];
@@ -230,6 +270,13 @@ export default function Stops() {
   const filteredStops = stops?.filter((stop) =>
     stop.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Handle creating post
+  const handleCreatePost = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStop || !newMessage.trim()) return;
+    createStopPostMutation.mutate({ stopId: selectedStop, content: newMessage });
+  };
 
   return (
     <div className="space-y-6 p-4 sm:p-6">

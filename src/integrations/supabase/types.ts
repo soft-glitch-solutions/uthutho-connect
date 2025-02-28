@@ -251,6 +251,7 @@ export type Database = {
       }
       route_requests: {
         Row: {
+          cost: number | null
           created_at: string
           description: string | null
           end_point: string
@@ -262,6 +263,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cost?: number | null
           created_at?: string
           description?: string | null
           end_point: string
@@ -273,6 +275,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cost?: number | null
           created_at?: string
           description?: string | null
           end_point?: string
@@ -283,7 +286,22 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "route_requests_end_point_fkey"
+            columns: ["end_point"]
+            isOneToOne: false
+            referencedRelation: "hubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "route_requests_start_point_fkey"
+            columns: ["start_point"]
+            isOneToOne: false
+            referencedRelation: "hubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       routes: {
         Row: {
@@ -420,6 +438,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          image_url: string | null
           latitude: number
           longitude: number
           name: string
@@ -430,6 +449,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          image_url?: string | null
           latitude: number
           longitude: number
           name: string
@@ -440,6 +460,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          image_url?: string | null
           latitude?: number
           longitude?: number
           name?: string
