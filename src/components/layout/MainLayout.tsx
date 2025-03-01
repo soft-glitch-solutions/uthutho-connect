@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -37,12 +36,14 @@ export function MainLayout({ children }: MainLayoutProps) {
   useEffect(() => {
     const fetchUserPoints = async () => {
       try {
+        setLoadingPoints(true);
         const { data: userSession } = await supabase.auth.getSession();
+        
         if (userSession?.session?.user.id) {
           const { data, error } = await supabase
             .from('profiles')
             .select('points')
-            .eq('user_id', userSession.session.user.id)
+            .eq('id', userSession.session.user.id)
             .single();
 
           if (error) throw error;
@@ -50,6 +51,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         }
       } catch (error) {
         toast.error("Error fetching points.");
+        console.error(error);
       } finally {
         setLoadingPoints(false);
       }

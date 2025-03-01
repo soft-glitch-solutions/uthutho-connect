@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,11 +16,32 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { isWithinRadius } from "@/utils/location";
+import { LoginStreakPopup } from "@/components/LoginStreakPopup";
+import { updateLoginStreak } from "@/utils/loginStreak";
 
 export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [showLoginStreak, setShowLoginStreak] = useState(false);
   const navigate = useNavigate();
+
+  // Check login streak when component mounts
+  useEffect(() => {
+    const checkLoginStreak = async () => {
+      const { data: session } = await supabase.auth.getSession();
+      if (session.session?.user.id) {
+        const result = await updateLoginStreak(session.session.user.id);
+        if (result?.is_new_day) {
+          setShowLoginStreak(true);
+          if (result.points_added > 0) {
+            toast.success(`You earned ${result.points_added} point for your 7-day streak!`);
+          }
+        }
+      }
+    };
+
+    checkLoginStreak();
+  }, []);
 
   // Fetch the user's profile (first name and favorites)
   const { data: userProfile, isLoading: isProfileLoading } = useQuery({
@@ -205,6 +225,12 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
+      {/* Login Streak Popup */}
+      <LoginStreakPopup 
+        open={showLoginStreak} 
+        onClose={() => setShowLoginStreak(false)} 
+      />
+
       {/* Personalized Greeting with Add Favorite Button */}
       <div className="flex items-center">
         <h1 className="text-2xl font-bold">
