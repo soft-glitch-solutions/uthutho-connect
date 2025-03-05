@@ -15,9 +15,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, differenceInSeconds } from "date-fns";
 import { toast } from "sonner";
-import { CheckCircle, Loader2, Star } from "lucide-react";
+import { CheckCircle, Loader2, Star, Clock } from "lucide-react";
 import { isWithinRadius } from "@/utils/location";
 import { Json } from "@/integrations/supabase/types";
 
@@ -27,6 +27,7 @@ const WAITING_COLORS = {
   moderate: "bg-orange-500",
   high: "bg-red-500",
 };
+const WAITING_TIMEOUT = 10 * 60; // 10 minutes in seconds
 
 export default function Stops() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -35,6 +36,7 @@ export default function Stops() {
   const [selectedStop, setSelectedStop] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [selectedTransport, setSelectedTransport] = useState<string | null>(null);
+  const [waitingTimeLeft, setWaitingTimeLeft] = useState<{ [key: string]: number }>({});
   const queryClient = useQueryClient();
 
   // Get user's location
@@ -73,7 +75,9 @@ export default function Stops() {
           stop_waiting (
             id,
             transport_type,
-            user_id
+            user_id,
+            expires_at,
+            created_at
           ),
           stop_posts (
             id,
@@ -129,6 +133,41 @@ export default function Stops() {
     stop.stop_waiting?.some((w: any) => w.user_id === userId)
   );
 
+  // Calculate time left for waiting entries
+  useEffect(() => {
+    if (!stops || !userId) return;
+
+    const userWaitingEntries = stops.reduce((acc: { [key: string]: number }, stop) => {
+      const userWaiting = stop.stop_waiting?.find((w: any) => w.user_id === userId);
+      if (userWaiting) {
+        const expiresAt = new Date(userWaiting.expires_at);
+        const secondsLeft = Math.max(0, differenceInSeconds(expiresAt, new Date()));
+        acc[stop.id] = secondsLeft;
+      }
+      return acc;
+    }, {});
+
+    setWaitingTimeLeft(userWaitingEntries);
+
+    const intervalId = setInterval(() => {
+      setWaitingTimeLeft(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(stopId => {
+          if (updated[stopId] > 0) {
+            updated[stopId] -= 1;
+          }
+          // If timer reaches 0, refetch data
+          if (updated[stopId] === 0) {
+            queryClient.invalidateQueries({ queryKey: ["stops"] });
+          }
+        });
+        return updated;
+      });
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [stops, userId, queryClient]);
+
   // Real-time updates subscription
   useEffect(() => {
     const channel = supabase
@@ -162,6 +201,36 @@ export default function Stops() {
     };
   }, [queryClient]);
 
+  // Track user's location and automatically remove waiting status if they leave the stop
+  useEffect(() => {
+    if (!userLocation || !stops || !userId) return;
+
+    const locationCheckInterval = setInterval(() => {
+      stops.forEach(stop => {
+        const isUserWaitingHere = stop.stop_waiting?.some(
+          (w: any) => w.user_id === userId
+        );
+
+        if (isUserWaitingHere) {
+          const isWithin = isWithinRadius(
+            userLocation.lat,
+            userLocation.lng,
+            stop.latitude,
+            stop.longitude
+          );
+
+          if (!isWithin) {
+            // User has left the stop area
+            removeWaitingMutation.mutate({ stopId: stop.id });
+            toast.info("You've left the stop area. Waiting status removed.");
+          }
+        }
+      });
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(locationCheckInterval);
+  }, [userLocation, stops, userId]);
+
   // Mark as waiting mutation
   const markAsWaitingMutation = useMutation({
     mutationFn: async ({ stopId, transportType }: { stopId: string, transportType: string }) => {
@@ -187,13 +256,14 @@ export default function Stops() {
           stop_id: stopId,
           user_id: userId,
           transport_type: transportType,
+          // expires_at field has a default in the DB table (now() + 10 minutes)
         });
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stops"] });
-      toast.success("Marked as waiting!");
+      toast.success("Marked as waiting! You'll be automatically removed after 10 minutes.");
     },
     onError: (error) => {
       toast.error(error.message);
@@ -305,6 +375,13 @@ export default function Stops() {
     createStopPostMutation.mutate({ stopId: selectedStop, content: newMessage });
   };
 
+  // Format time left as MM:SS
+  const formatTimeLeft = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -337,6 +414,7 @@ export default function Stops() {
             const isUserWaitingHere = stop.stop_waiting?.some(
               (w: any) => w.user_id === userId
             );
+            const timeLeft = waitingTimeLeft[stop.id] || 0;
 
             return (
               <Card
@@ -363,6 +441,13 @@ export default function Stops() {
                   </Button>
                 </div>
 
+                {isUserWaitingHere && (
+                  <div className="flex items-center text-amber-600 gap-1">
+                    <Clock className="h-4 w-4" />
+                    <span>Waiting time remaining: {formatTimeLeft(timeLeft)}</span>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap gap-2">
                   {TRANSPORT_TYPES.map((type) => {
                     const typeWaiting = stop.stop_waiting?.filter(
@@ -374,7 +459,7 @@ export default function Stops() {
                         key={type}
                         variant="outline"
                         size="sm"
-                        disabled={isUserWaiting && !isUserWaitingHere}
+                        disabled={(isUserWaiting && !isUserWaitingHere) || (isUserWaitingHere && type !== stop.stop_waiting?.find((w: any) => w.user_id === userId)?.transport_type)}
                         onClick={() =>
                           isUserWaitingHere
                             ? removeWaitingMutation.mutate({ stopId: stop.id })
@@ -384,7 +469,7 @@ export default function Stops() {
                               })
                         }
                       >
-                        {isUserWaitingHere ? (
+                        {isUserWaitingHere && stop.stop_waiting?.find((w: any) => w.user_id === userId)?.transport_type === type ? (
                           <>
                             <CheckCircle className="mr-2 h-4 w-4" />
                             Got Picked Up
