@@ -115,29 +115,13 @@ const Profile = () => {
     }
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleAvatarUpload = async (publicUrl: string) => {
     try {
       setLoading(true);
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${session?.user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      if (!session?.user) throw new Error('No user session found');
 
       const updates = {
-        ...profile,
+        id: session.user.id,
         avatar_url: publicUrl,
         updated_at: new Date().toISOString(),
       };
@@ -148,8 +132,7 @@ const Profile = () => {
 
       if (updateError) throw updateError;
 
-      setProfile(updates);
-      toast.success('Avatar updated successfully!');
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
     } catch (error: any) {
       toast.error(error.message);
     } finally {

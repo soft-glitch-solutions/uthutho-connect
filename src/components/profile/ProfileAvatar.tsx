@@ -8,7 +8,7 @@ import { toast } from "sonner";
 interface ProfileAvatarProps {
   url?: string | null;
   firstName?: string | null;
-  onUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  onUpload: (url: string) => Promise<void>;
 }
 
 export function ProfileAvatar({ url, firstName, onUpload }: ProfileAvatarProps) {
@@ -43,8 +43,8 @@ export function ProfileAvatar({ url, firstName, onUpload }: ProfileAvatarProps) 
         .from('avatars')
         .getPublicUrl(filePath);
 
-      // Call parent's onUpload with the event
-      await onUpload(e);
+      // Call parent's onUpload with the public URL
+      await onUpload(publicUrl);
       
       toast.success('Avatar updated successfully!');
     } catch (error: any) {
@@ -85,4 +85,3 @@ export function ProfileAvatar({ url, firstName, onUpload }: ProfileAvatarProps) 
     </div>
   );
 }
-
