@@ -260,6 +260,7 @@ export type Database = {
           created_at: string | null
           id: string
           post_id: string
+          stop_post: string | null
           updated_at: string | null
           user_id: string
         }
@@ -268,6 +269,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           post_id: string
+          stop_post?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -276,6 +278,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           post_id?: string
+          stop_post?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -285,6 +288,13 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "hub_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_stop_post_fkey"
+            columns: ["stop_post"]
+            isOneToOne: false
+            referencedRelation: "stop_posts"
             referencedColumns: ["id"]
           },
           {
@@ -300,30 +310,40 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          post_id: string
+          post_hub_id: string | null
+          post_stop_id: string | null
           reaction_type: string
           user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
-          post_id: string
+          post_hub_id?: string | null
+          post_stop_id?: string | null
           reaction_type: string
           user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
-          post_id?: string
+          post_hub_id?: string | null
+          post_stop_id?: string | null
           reaction_type?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "post_reactions_post_id_fkey"
-            columns: ["post_id"]
+            foreignKeyName: "post_reactions_post_hub_id_fkey"
+            columns: ["post_hub_id"]
             isOneToOne: false
             referencedRelation: "hub_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_reactions_post_stop_id_fkey"
+            columns: ["post_stop_id"]
+            isOneToOne: false
+            referencedRelation: "stop_posts"
             referencedColumns: ["id"]
           },
           {
@@ -848,6 +868,16 @@ export type Database = {
       cleanup_old_posts: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      handle_login_streak: {
+        Args: {
+          input_user_id: string
+        }
+        Returns: {
+          current_streak: number
+          max_streak: number
+          points_earned: number
+        }[]
       }
       is_admin: {
         Args: {
