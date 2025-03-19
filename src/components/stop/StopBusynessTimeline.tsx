@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent
@@ -99,10 +99,19 @@ const getSafetyLabel = (level: number) => {
 };
 
 export function StopBusynessTimeline({ busyTimes }: StopBusynessTimelineProps) {
-  const [selectedDay, setSelectedDay] = useState<string>("1"); // Default to Monday
+  // Get current day of week (0-6, where 0 is Sunday)
+  const currentDayOfWeek = new Date().getDay();
+  const [selectedDay, setSelectedDay] = useState<string>(currentDayOfWeek.toString());
   
   // Get the unique days of week that have data
   const availableDays = [...new Set(busyTimes.map(time => time.day_of_week))].sort();
+  
+  // If the current day has no data, select the first available day
+  useEffect(() => {
+    if (!availableDays.includes(currentDayOfWeek) && availableDays.length > 0) {
+      setSelectedDay(availableDays[0].toString());
+    }
+  }, [availableDays, currentDayOfWeek]);
   
   // Filter busy times for the selected day
   const filteredTimes = busyTimes.filter(time => time.day_of_week === parseInt(selectedDay));
@@ -130,19 +139,21 @@ export function StopBusynessTimeline({ busyTimes }: StopBusynessTimelineProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="font-medium">Select Day:</h3>
-          <Select value={selectedDay} onValueChange={setSelectedDay}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select day" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableDays.map(day => (
-                <SelectItem key={day} value={day.toString()}>
-                  {DAYS_OF_WEEK[day]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <h3 className="font-medium">Current Day: {DAYS_OF_WEEK[parseInt(selectedDay)]}</h3>
+          {availableDays.length > 1 && (
+            <Select value={selectedDay} onValueChange={setSelectedDay}>
+              <SelectTrigger className="w-[180px] ml-4">
+                <SelectValue placeholder="Change day" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableDays.map(day => (
+                  <SelectItem key={day} value={day.toString()}>
+                    {DAYS_OF_WEEK[day]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
