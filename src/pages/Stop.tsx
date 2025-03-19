@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -17,9 +16,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow, differenceInSeconds } from "date-fns";
 import { toast } from "sonner";
-import { CheckCircle, Loader2, Star, Clock } from "lucide-react";
+import { CheckCircle, Loader2, Star, Clock, Info, ExternalLink } from "lucide-react";
 import { isWithinRadius } from "@/utils/location";
 import { Json } from "@/integrations/supabase/types";
+import { Link, useNavigate } from "react-router-dom";
 
 const TRANSPORT_TYPES = ["Bus 🚌", "Train 🚂", "Taxi 🚕"];
 const WAITING_COLORS = {
@@ -38,6 +38,7 @@ export default function Stops() {
   const [selectedTransport, setSelectedTransport] = useState<string | null>(null);
   const [waitingTimeLeft, setWaitingTimeLeft] = useState<{ [key: string]: number }>({});
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Get user's location
   useEffect(() => {
@@ -382,6 +383,11 @@ export default function Stops() {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // Navigate to stop details
+  const handleViewDetails = (stopId: string) => {
+    navigate(`/stops/${stopId}`);
+  };
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -482,13 +488,24 @@ export default function Stops() {
                   })}
                 </div>
 
-                <Button
-                  variant="link"
-                  onClick={() => setSelectedStop(stop.id)}
-                  className="w-full"
-                >
-                  View Details & Chat
-                </Button>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="link"
+                    onClick={() => setSelectedStop(stop.id)}
+                    className="flex-1"
+                  >
+                    View Chat
+                  </Button>
+                  
+                  <Button
+                    variant="link"
+                    onClick={() => handleViewDetails(stop.id)}
+                    className="flex-1"
+                  >
+                    <Info className="mr-1 h-4 w-4" />
+                    Details
+                  </Button>
+                </div>
               </Card>
             );
           })

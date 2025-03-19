@@ -15,13 +15,15 @@ import RouteRequest from "./pages/RouteRequest";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Stop from "./pages/Stop";
+import StopDetails from "./pages/StopDetails";
+import AdminNearbySpots from "./pages/AdminNearbySpots";
 import HubsDetials from "./pages/HubsDetials";
 import RouteDetails from "./pages/RoutesDetials";
 import AddFavorites from "./pages/AddFavorites";
 import FavoriteDetails from './pages/FavoriteDetails';
 import Feed from './pages/Feed';
 import Store from './pages/Store';
-import PrivateRoute from "@/components/PrivateRoute"; // Import the PrivateRoute component
+import PrivateRoute from "@/components/PrivateRoute";
 
 
 const queryClient = new QueryClient();
@@ -81,6 +83,14 @@ const App = () => (
           <Route 
             path="/stops" 
             element={<PrivateRoute><MainLayout><Stop /></MainLayout></PrivateRoute>} 
+          />
+          <Route 
+            path="/stops/:stopId" 
+            element={<PrivateRoute><MainLayout><StopDetails /></MainLayout></PrivateRoute>} 
+          />
+          <Route 
+            path="/stops/:stopId/manage-nearby" 
+            element={<PrivateRoute><MainLayout><AdminNearbySpots /></MainLayout></PrivateRoute>} 
           />
           <Route 
             path="/profile" 

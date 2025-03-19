@@ -254,6 +254,56 @@ export type Database = {
         }
         Relationships: []
       }
+      nearby_spots: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          distance_meters: number | null
+          id: string
+          image_url: string | null
+          latitude: number
+          longitude: number
+          name: string
+          stop_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          distance_meters?: number | null
+          id?: string
+          image_url?: string | null
+          latitude: number
+          longitude: number
+          name: string
+          stop_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          distance_meters?: number | null
+          id?: string
+          image_url?: string | null
+          latitude?: number
+          longitude?: number
+          name?: string
+          stop_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nearby_spots_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_comments: {
         Row: {
           content: string
