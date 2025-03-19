@@ -590,6 +590,47 @@ export type Database = {
           },
         ]
       }
+      stop_busy_times: {
+        Row: {
+          busyness_level: number
+          created_at: string | null
+          day_of_week: number
+          hour_of_day: number
+          id: string
+          safety_level: number
+          stop_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          busyness_level: number
+          created_at?: string | null
+          day_of_week: number
+          hour_of_day: number
+          id?: string
+          safety_level: number
+          stop_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          busyness_level?: number
+          created_at?: string | null
+          day_of_week?: number
+          hour_of_day?: number
+          id?: string
+          safety_level?: number
+          stop_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stop_busy_times_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stop_posts: {
         Row: {
           content: string

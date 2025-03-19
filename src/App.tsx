@@ -17,6 +17,7 @@ import Profile from "./pages/Profile";
 import Stop from "./pages/Stop";
 import StopDetails from "./pages/StopDetails";
 import AdminNearbySpots from "./pages/AdminNearbySpots";
+import ManageStopBusyness from "./pages/ManageStopBusyness";
 import HubsDetials from "./pages/HubsDetials";
 import RouteDetails from "./pages/RoutesDetials";
 import AddFavorites from "./pages/AddFavorites";
@@ -91,6 +92,10 @@ const App = () => (
           <Route 
             path="/stops/:stopId/manage-nearby" 
             element={<PrivateRoute><MainLayout><AdminNearbySpots /></MainLayout></PrivateRoute>} 
+          />
+          <Route 
+            path="/stops/:stopId/manage-busyness" 
+            element={<PrivateRoute><MainLayout><ManageStopBusyness /></MainLayout></PrivateRoute>} 
           />
           <Route 
             path="/profile" 

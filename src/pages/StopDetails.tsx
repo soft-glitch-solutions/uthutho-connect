@@ -19,10 +19,22 @@ import {
   TableBody, 
   TableCell 
 } from "@/components/ui/table";
-import { MapPin, Clock, Info, Navigation, ShoppingBag, Coffee, Landmark, Settings } from "lucide-react";
+import { 
+  MapPin, 
+  Clock, 
+  Info, 
+  Navigation, 
+  ShoppingBag, 
+  Coffee, 
+  Landmark, 
+  Settings, 
+  AlertTriangle,
+  Users
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateDistance } from "@/utils/location";
 import { toast } from "sonner";
+import { StopBusynessTimeline } from "@/components/stop/StopBusynessTimeline";
 
 export default function StopDetails() {
   const { stopId } = useParams();
@@ -116,6 +128,23 @@ export default function StopDetails() {
     enabled: !!stopId,
   });
 
+  // Fetch stop busy times
+  const { data: busyTimes, isLoading: isLoadingBusyTimes } = useQuery({
+    queryKey: ["busyTimes", stopId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stop_busy_times")
+        .select("*")
+        .eq("stop_id", stopId)
+        .order("day_of_week", { ascending: true })
+        .order("hour_of_day", { ascending: true });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!stopId,
+  });
+
   // Format category icons
   const getCategoryIcon = (category: string) => {
     switch (category?.toLowerCase()) {
@@ -172,6 +201,11 @@ export default function StopDetails() {
     navigate(`/stops/${stopId}/manage-nearby`);
   };
 
+  // Navigate to admin busyness page
+  const goToManageBusyness = () => {
+    navigate(`/stops/${stopId}/manage-busyness`);
+  };
+
   if (isLoadingStop) {
     return <div className="flex justify-center p-8">Loading stop details...</div>;
   }
@@ -191,10 +225,16 @@ export default function StopDetails() {
         <h1 className="text-2xl font-bold">{stop.name}</h1>
         <div className="flex gap-2">
           {isAdmin && (
-            <Button onClick={goToAdminPage} variant="outline">
-              <Settings className="mr-2 h-4 w-4" />
-              Manage Nearby Spots
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={goToManageBusyness} variant="outline">
+                <Clock className="mr-2 h-4 w-4" />
+                Manage Busyness
+              </Button>
+              <Button onClick={goToAdminPage} variant="outline">
+                <Settings className="mr-2 h-4 w-4" />
+                Manage Nearby Spots
+              </Button>
+            </div>
           )}
           <Button onClick={() => navigate("/stops")} variant="outline">
             Back to Stops
@@ -242,11 +282,35 @@ export default function StopDetails() {
         </CardContent>
       </Card>
       
-      <Tabs defaultValue="nearby">
+      <Tabs defaultValue="busyness">
         <TabsList className="w-full mb-4">
+          <TabsTrigger value="busyness" className="flex-1">Busyness Timeline</TabsTrigger>
           <TabsTrigger value="nearby" className="flex-1">Nearby Spots</TabsTrigger>
           <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="busyness">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Users className="mr-2 h-5 w-5" />
+                Busyness & Safety Timeline
+              </CardTitle>
+              <CardDescription>
+                View how busy and safe this stop is at different times
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingBusyTimes ? (
+                <div>Loading busyness data...</div>
+              ) : !busyTimes || busyTimes.length === 0 ? (
+                <div>No busyness data available for this stop.</div>
+              ) : (
+                <StopBusynessTimeline busyTimes={busyTimes} />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
         
         <TabsContent value="nearby">
           <Card>
@@ -257,11 +321,11 @@ export default function StopDetails() {
             <CardContent>
               {isLoadingNearbySpots ? (
                 <div>Loading nearby spots...</div>
-              ) : nearbySpots?.length === 0 ? (
+              ) : !nearbySpots || nearbySpots.length === 0 ? (
                 <div>No nearby spots found for this stop.</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {nearbySpots?.map((spot) => (
+                  {nearbySpots.map((spot) => (
                     <Card key={spot.id} className="overflow-hidden">
                       {spot.image_url && (
                         <div className="h-40 overflow-hidden">
