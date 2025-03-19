@@ -4,17 +4,9 @@ import {
   Card, 
   CardContent
 } from "@/components/ui/card";
-import { 
-  Select, 
-  SelectTrigger, 
-  SelectValue, 
-  SelectContent, 
-  SelectItem 
-} from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Users, Shield } from "lucide-react";
-import { ChartContainer } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { AlertTriangle, Users, Shield, Clock, Calendar } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Define the type for the busy times data
 interface StopBusyTime {
@@ -99,145 +91,111 @@ const getSafetyLabel = (level: number) => {
 };
 
 export function StopBusynessTimeline({ busyTimes }: StopBusynessTimelineProps) {
-  // Get current day of week (0-6, where 0 is Sunday)
-  const currentDayOfWeek = new Date().getDay();
-  const [selectedDay, setSelectedDay] = useState<string>(currentDayOfWeek.toString());
+  const isMobile = useIsMobile();
+  // Get current day of week (0-6, where 0 is Sunday) and current hour
+  const currentDate = new Date();
+  const currentDayOfWeek = currentDate.getDay();
+  const currentHour = currentDate.getHours();
   
-  // Get the unique days of week that have data
-  const availableDays = [...new Set(busyTimes.map(time => time.day_of_week))].sort();
+  // Filter busy times for the current day
+  const todaysTimes = busyTimes.filter(time => time.day_of_week === currentDayOfWeek);
   
-  // If the current day has no data, select the first available day
-  useEffect(() => {
-    if (!availableDays.includes(currentDayOfWeek) && availableDays.length > 0) {
-      setSelectedDay(availableDays[0].toString());
-    }
-  }, [availableDays, currentDayOfWeek]);
+  // Find the current hour's data if available
+  const currentTimeData = todaysTimes.find(time => time.hour_of_day === currentHour);
   
-  // Filter busy times for the selected day
-  const filteredTimes = busyTimes.filter(time => time.day_of_week === parseInt(selectedDay));
-  
-  // Sort by hour of day
-  const sortedTimes = [...filteredTimes].sort((a, b) => a.hour_of_day - b.hour_of_day);
-  
-  // Prepare chart data
-  const chartData = sortedTimes.map(time => ({
-    hour: formatHour(time.hour_of_day),
-    busyness: time.busyness_level,
-    safety: time.safety_level,
-  }));
-
-  const config = {
-    busyness: {
-      color: "#f97316", // orange-500
-    },
-    safety: {
-      color: "#10b981", // emerald-500
-    },
+  // Find the closest time data if exact match not available
+  const findClosestTimeData = () => {
+    if (todaysTimes.length === 0) return null;
+    
+    // Sort by how close the hour is to current hour
+    const sortedByCloseness = [...todaysTimes].sort((a, b) => {
+      const diffA = Math.abs(a.hour_of_day - currentHour);
+      const diffB = Math.abs(b.hour_of_day - currentHour);
+      return diffA - diffB;
+    });
+    
+    return sortedByCloseness[0];
   };
+  
+  // Use exact match or closest time
+  const timeData = currentTimeData || findClosestTimeData();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <h3 className="font-medium">Current Day: {DAYS_OF_WEEK[parseInt(selectedDay)]}</h3>
-          {availableDays.length > 1 && (
-            <Select value={selectedDay} onValueChange={setSelectedDay}>
-              <SelectTrigger className="w-[180px] ml-4">
-                <SelectValue placeholder="Change day" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableDays.map(day => (
-                  <SelectItem key={day} value={day.toString()}>
-                    {DAYS_OF_WEEK[day]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Calendar className="h-4 w-4" />
+          <h3 className="font-medium text-sm sm:text-base">
+            {DAYS_OF_WEEK[currentDayOfWeek]}
+          </h3>
         </div>
-        
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Users className="h-4 w-4" />
-            <span>Busyness</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Shield className="h-4 w-4" />
-            <span>Safety</span>
-          </div>
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          <span className="text-sm sm:text-base">{formatHour(currentHour)}</span>
         </div>
       </div>
       
-      <div className="h-[300px] w-full">
-        <ChartContainer config={config}>
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="hour" />
-            <YAxis domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="busyness" name="Busyness Level" fill="#f97316" />
-            <Bar dataKey="safety" name="Safety Level" fill="#10b981" />
-          </BarChart>
-        </ChartContainer>
-      </div>
-      
-      <div className="space-y-4">
-        <h3 className="font-medium">Hourly Breakdown for {DAYS_OF_WEEK[parseInt(selectedDay)]}</h3>
-        
-        {sortedTimes.length === 0 ? (
-          <p>No data available for this day.</p>
-        ) : (
-          <div className="grid gap-4">
-            {sortedTimes.map((time) => (
-              <Card key={time.id} className="overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-medium">{formatHour(time.hour_of_day)}</h4>
-                    <div className="flex gap-2">
-                      <span className={`px-2 py-1 text-xs rounded-full text-white ${getBusynessColor(time.busyness_level)}`}>
-                        Busyness: {getBusynessLabel(time.busyness_level)}
-                      </span>
-                      <span className={`px-2 py-1 text-xs rounded-full text-white ${getSafetyColor(time.safety_level)}`}>
-                        Safety: {getSafetyLabel(time.safety_level)}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm flex items-center">
-                          <Users className="h-4 w-4 mr-1" /> Busyness Level
-                        </span>
-                        <span className="text-sm">{time.busyness_level}/5</span>
-                      </div>
-                      <Progress value={time.busyness_level * 20} className="h-2" />
-                    </div>
-                    
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm flex items-center">
-                          <Shield className="h-4 w-4 mr-1" /> Safety Level
-                        </span>
-                        <span className="text-sm">{time.safety_level}/5</span>
-                      </div>
-                      <Progress value={time.safety_level * 20} className="h-2" />
-                    </div>
-                  </div>
-                  
-                  {time.busyness_level >= 4 && time.safety_level <= 2 && (
-                    <div className="mt-3 flex items-center text-amber-600">
-                      <AlertTriangle className="h-4 w-4 mr-1" />
-                      <span className="text-sm">High traffic, low safety - take caution during this time</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+      {!timeData ? (
+        <Card className="overflow-hidden bg-gray-50">
+          <CardContent className="p-4">
+            <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
+              <AlertTriangle className="h-8 w-8 mb-2" />
+              <p>No data available for the current time.</p>
+              <p className="text-sm">Check back later or view another time.</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="overflow-hidden">
+          <CardContent className={`p-4 ${isMobile ? 'space-y-3' : 'space-y-4'}`}>
+            <div className="flex justify-between items-center mb-1">
+              <h4 className="font-medium">
+                {timeData === currentTimeData 
+                  ? 'Current Status' 
+                  : `Closest Data (${formatHour(timeData.hour_of_day)})`
+                }
+              </h4>
+              <div className="flex gap-2">
+                <span className={`px-2 py-1 text-xs rounded-full text-white ${getBusynessColor(timeData.busyness_level)}`}>
+                  {getBusynessLabel(timeData.busyness_level)}
+                </span>
+                <span className={`px-2 py-1 text-xs rounded-full text-white ${getSafetyColor(timeData.safety_level)}`}>
+                  {getSafetyLabel(timeData.safety_level)}
+                </span>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm flex items-center">
+                    <Users className="h-4 w-4 mr-1" /> Busyness
+                  </span>
+                  <span className="text-sm">{timeData.busyness_level}/5</span>
+                </div>
+                <Progress value={timeData.busyness_level * 20} className="h-2" />
+              </div>
+              
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm flex items-center">
+                    <Shield className="h-4 w-4 mr-1" /> Safety
+                  </span>
+                  <span className="text-sm">{timeData.safety_level}/5</span>
+                </div>
+                <Progress value={timeData.safety_level * 20} className="h-2" />
+              </div>
+            </div>
+            
+            {timeData.busyness_level >= 4 && timeData.safety_level <= 2 && (
+              <div className="mt-2 flex items-center text-amber-600 bg-amber-50 p-2 rounded-md text-sm">
+                <AlertTriangle className="h-4 w-4 mr-1 flex-shrink-0" />
+                <span>High traffic, low safety - take caution</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
