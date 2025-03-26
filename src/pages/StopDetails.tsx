@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Card, 
   CardHeader, 
@@ -35,12 +34,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { calculateDistance } from "@/utils/location";
 import { toast } from "sonner";
 import { StopBusynessTimeline } from "@/components/stop/StopBusynessTimeline";
+import { StopRouteSelector } from "@/components/stop/StopRouteSelector";
 
 export default function StopDetails() {
   const { stopId } = useParams();
   const navigate = useNavigate();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   
   // Get user's location
   useEffect(() => {
@@ -88,6 +90,7 @@ export default function StopDetails() {
             transport_type,
             user_id,
             expires_at,
+						route_id,
             created_at
           ),
           stop_posts (
@@ -205,6 +208,96 @@ export default function StopDetails() {
   const goToManageBusyness = () => {
     navigate(`/stops/${stopId}/manage-busyness`);
   };
+
+  // Mark as waiting mutation
+  const markAsWaitingMutation = useMutation({
+    mutationFn: async ({ stopId, transportType }: { stopId: string, transportType: string }) => {
+      if (!userLocation) throw new Error("Location required to mark as waiting");
+      if (!userId) throw new Error("You must be logged in to mark as waiting");
+      if (!selectedRoute) throw new Error("Please select a route you're waiting for");
+
+      const stop = stops?.find(s => s.id === stopId);
+      if (!stop) throw new Error("Stop not found");
+
+      // Check if user is within 500m of the stop
+      if (!isWithinRadius(
+        userLocation.lat,
+        userLocation.lng,
+        stop.latitude,
+        stop.longitude
+      )) {
+        throw new Error("You must be within 500m of the stop to mark as waiting");
+      }
+
+      const { error } = await supabase
+        .from("stop_waiting")
+        .insert({
+          stop_id: stopId,
+          user_id: userId,
+          transport_type: transportType,
+          route_id: selectedRoute,
+          // expires_at field has a default in the DB table (now() + 10 minutes)
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stops"] });
+      toast.success("Marked as waiting! You'll be automatically removed after 10 minutes.");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Remove waiting status mutation
+  const removeWaitingMutation = useMutation({
+    mutationFn: async ({ stopId }: { stopId: string }) => {
+      if (!userId) throw new Error("You must be logged in to update waiting status");
+      
+      const { error } = await supabase
+        .from("stop_waiting")
+        .delete()
+        .eq("stop_id", stopId)
+        .eq("user_id", userId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stops"] });
+      toast.success("Marked as picked up!");
+    },
+    onError: (error) => {
+      toast.error(`Error marking as picked up: ${error.message}`);
+    },
+  });
+
+  // Post message mutation
+  const createStopPostMutation = useMutation({
+    mutationFn: async ({ stopId, content }: { stopId: string, content: string }) => {
+      if (!userId) throw new Error("You must be logged in to post messages");
+      
+      const { error } = await supabase
+        .from("stop_posts")
+        .insert({
+          stop_id: stopId,
+          user_id: userId,
+          content,
+          transport_waiting_for: selectedTransport,
+          route_id: selectedRoute,
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stops"] });
+      setNewMessage("");
+      toast.success("Message posted successfully!");
+    },
+    onError: (error) => {
+      toast.error(`Error posting message: ${error.message}`);
+    },
+  });
 
   if (isLoadingStop) {
     return <div className="flex justify-center p-8">Loading stop details...</div>;
@@ -385,6 +478,12 @@ export default function StopDetails() {
               <CardDescription>Latest posts and waiting information</CardDescription>
             </CardHeader>
             <CardContent>
+              <StopRouteSelector 
+                stopId={stopId} 
+                selectedRoute={selectedRoute}
+                onSelectRoute={setSelectedRoute}
+                disabled={false}
+              />
               {stop.stop_posts && stop.stop_posts.length > 0 ? (
                 <div className="space-y-4">
                   {stop.stop_posts.sort((a, b) => 
@@ -419,6 +518,7 @@ export default function StopDetails() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Transport Type</TableHead>
+												<TableHead>Route</TableHead>
                         <TableHead>Started Waiting</TableHead>
                         <TableHead>Expires At</TableHead>
                       </TableRow>
@@ -427,6 +527,7 @@ export default function StopDetails() {
                       {stop.stop_waiting.map((waiting) => (
                         <TableRow key={waiting.id}>
                           <TableCell>{waiting.transport_type}</TableCell>
+													<TableCell>{waiting.route_id}</TableCell>
                           <TableCell>{new Date(waiting.created_at).toLocaleString()}</TableCell>
                           <TableCell>
                             <div className="flex items-center">

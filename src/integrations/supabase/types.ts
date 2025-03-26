@@ -308,8 +308,8 @@ export type Database = {
         Row: {
           content: string
           created_at: string | null
+          hub_post: string | null
           id: string
-          post_id: string
           stop_post: string | null
           updated_at: string | null
           user_id: string
@@ -317,8 +317,8 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string | null
+          hub_post?: string | null
           id?: string
-          post_id: string
           stop_post?: string | null
           updated_at?: string | null
           user_id: string
@@ -326,16 +326,16 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string | null
+          hub_post?: string | null
           id?: string
-          post_id?: string
           stop_post?: string | null
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "post_comments_post_id_fkey"
-            columns: ["post_id"]
+            foreignKeyName: "post_comments_hub_post_fkey"
+            columns: ["hub_post"]
             isOneToOne: false
             referencedRelation: "hub_posts"
             referencedColumns: ["id"]
@@ -546,6 +546,48 @@ export type Database = {
           },
         ]
       }
+      route_stops: {
+        Row: {
+          created_at: string | null
+          id: string
+          order_number: number
+          route_id: string
+          stop_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          order_number: number
+          route_id: string
+          stop_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          order_number?: number
+          route_id?: string
+          stop_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_stops_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "route_stops_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       routes: {
         Row: {
           cost: number
@@ -636,6 +678,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          route_id: string | null
           stop_id: string
           transport_waiting_for: string | null
           updated_at: string | null
@@ -645,6 +688,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
+          route_id?: string | null
           stop_id: string
           transport_waiting_for?: string | null
           updated_at?: string | null
@@ -654,12 +698,20 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
+          route_id?: string | null
           stop_id?: string
           transport_waiting_for?: string | null
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "stop_posts_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stop_posts_stop_id_fkey"
             columns: ["stop_id"]
@@ -738,6 +790,7 @@ export type Database = {
           created_at: string | null
           expires_at: string
           id: string
+          route_id: string | null
           stop_id: string
           transport_type: string
           user_id: string
@@ -746,6 +799,7 @@ export type Database = {
           created_at?: string | null
           expires_at?: string
           id?: string
+          route_id?: string | null
           stop_id: string
           transport_type: string
           user_id: string
@@ -754,11 +808,19 @@ export type Database = {
           created_at?: string | null
           expires_at?: string
           id?: string
+          route_id?: string | null
           stop_id?: string
           transport_type?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "stop_waiting_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stop_waiting_stop_id_fkey"
             columns: ["stop_id"]

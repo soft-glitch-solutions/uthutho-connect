@@ -20,6 +20,7 @@ import { CheckCircle, Loader2, Star, Clock, Info, ExternalLink } from "lucide-re
 import { isWithinRadius } from "@/utils/location";
 import { Json } from "@/integrations/supabase/types";
 import { Link, useNavigate } from "react-router-dom";
+import { StopRouteSelector } from "@/components/stop/StopRouteSelector";
 
 const TRANSPORT_TYPES = ["Bus 🚌", "Train 🚂", "Taxi 🚕"];
 const WAITING_COLORS = {
@@ -37,10 +38,10 @@ export default function Stops() {
   const [newMessage, setNewMessage] = useState("");
   const [selectedTransport, setSelectedTransport] = useState<string | null>(null);
   const [waitingTimeLeft, setWaitingTimeLeft] = useState<{ [key: string]: number }>({});
+  const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // Get user's location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -60,7 +61,6 @@ export default function Stops() {
     }
   }, []);
 
-  // Fetch all stops and waiting status
   const { data: stops, isLoading } = useQuery({
     queryKey: ["stops"],
     queryFn: async () => {
@@ -96,7 +96,6 @@ export default function Stops() {
 
       if (error) throw error;
 
-      // Parse favorites safely
       let favorites: string[] = [];
       if (userProfile?.favorites) {
         try {
@@ -117,7 +116,6 @@ export default function Stops() {
     },
   });
 
-  // Get the current user's waiting status
   const getUserId = async () => {
     const { data } = await supabase.auth.getSession();
     return data.session?.user.id;
@@ -129,12 +127,10 @@ export default function Stops() {
     getUserId().then(id => setUserId(id));
   }, []);
 
-  // Check if the user is already waiting at any stop
   const isUserWaiting = stops?.some((stop) =>
     stop.stop_waiting?.some((w: any) => w.user_id === userId)
   );
 
-  // Calculate time left for waiting entries
   useEffect(() => {
     if (!stops || !userId) return;
 
@@ -157,7 +153,6 @@ export default function Stops() {
           if (updated[stopId] > 0) {
             updated[stopId] -= 1;
           }
-          // If timer reaches 0, refetch data
           if (updated[stopId] === 0) {
             queryClient.invalidateQueries({ queryKey: ["stops"] });
           }
@@ -169,7 +164,6 @@ export default function Stops() {
     return () => clearInterval(intervalId);
   }, [stops, userId, queryClient]);
 
-  // Real-time updates subscription
   useEffect(() => {
     const channel = supabase
       .channel('stop-updates')
@@ -202,7 +196,6 @@ export default function Stops() {
     };
   }, [queryClient]);
 
-  // Track user's location and automatically remove waiting status if they leave the stop
   useEffect(() => {
     if (!userLocation || !stops || !userId) return;
 
@@ -221,27 +214,25 @@ export default function Stops() {
           );
 
           if (!isWithin) {
-            // User has left the stop area
             removeWaitingMutation.mutate({ stopId: stop.id });
             toast.info("You've left the stop area. Waiting status removed.");
           }
         }
       });
-    }, 30000); // Check every 30 seconds
+    }, 30000);
 
     return () => clearInterval(locationCheckInterval);
   }, [userLocation, stops, userId]);
 
-  // Mark as waiting mutation
   const markAsWaitingMutation = useMutation({
     mutationFn: async ({ stopId, transportType }: { stopId: string, transportType: string }) => {
       if (!userLocation) throw new Error("Location required to mark as waiting");
       if (!userId) throw new Error("You must be logged in to mark as waiting");
+      if (!selectedRoute) throw new Error("Please select a route you're waiting for");
 
       const stop = stops?.find(s => s.id === stopId);
       if (!stop) throw new Error("Stop not found");
 
-      // Check if user is within 500m of the stop
       if (!isWithinRadius(
         userLocation.lat,
         userLocation.lng,
@@ -257,6 +248,7 @@ export default function Stops() {
           stop_id: stopId,
           user_id: userId,
           transport_type: transportType,
+          route_id: selectedRoute,
           // expires_at field has a default in the DB table (now() + 10 minutes)
         });
 
@@ -271,7 +263,6 @@ export default function Stops() {
     },
   });
 
-  // Remove waiting status mutation
   const removeWaitingMutation = useMutation({
     mutationFn: async ({ stopId }: { stopId: string }) => {
       if (!userId) throw new Error("You must be logged in to update waiting status");
@@ -293,7 +284,6 @@ export default function Stops() {
     },
   });
 
-  // Post message mutation
   const createStopPostMutation = useMutation({
     mutationFn: async ({ stopId, content }: { stopId: string, content: string }) => {
       if (!userId) throw new Error("You must be logged in to post messages");
@@ -305,6 +295,7 @@ export default function Stops() {
           user_id: userId,
           content,
           transport_waiting_for: selectedTransport,
+          route_id: selectedRoute,
         });
 
       if (error) throw error;
@@ -319,7 +310,6 @@ export default function Stops() {
     },
   });
 
-  // Toggle favorite mutation
   const toggleFavoriteMutation = useMutation({
     mutationFn: async (stopId: string) => {
       if (!userId) throw new Error("You must be logged in to add favorites");
@@ -329,7 +319,6 @@ export default function Stops() {
         .select("favorites")
         .single();
 
-      // Parse favorites safely
       let favorites: string[] = [];
       if (profile?.favorites) {
         try {
@@ -364,26 +353,22 @@ export default function Stops() {
     },
   });
 
-  // Filter stops based on search query
   const filteredStops = stops?.filter((stop) =>
     stop.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Handle creating post
   const handleCreatePost = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStop || !newMessage.trim()) return;
     createStopPostMutation.mutate({ stopId: selectedStop, content: newMessage });
   };
 
-  // Format time left as MM:SS
   const formatTimeLeft = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Navigate to stop details
   const handleViewDetails = (stopId: string) => {
     navigate(`/stops/${stopId}`);
   };
@@ -512,7 +497,6 @@ export default function Stops() {
         )}
       </div>
 
-      {/* Stop Details Dialog */}
       <Dialog open={!!selectedStop} onOpenChange={(open) => !open && setSelectedStop(null)}>
         <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
           <DialogHeader>
@@ -526,17 +510,29 @@ export default function Stops() {
             {selectedStop && (
               <>
                 <div className="space-y-4">
-                  <h3 className="font-medium">Mark as Waiting</h3>
+                  <h3 className="font-medium">Select Route and Mark as Waiting</h3>
+                  <StopRouteSelector 
+                    stopId={selectedStop}
+                    selectedRoute={selectedRoute}
+                    onSelectRoute={setSelectedRoute}
+                    disabled={isUserWaiting && !isUserWaitingHere}
+                  />
                   <div className="flex flex-wrap gap-2">
-                    {TRANSPORT_TYPES.map((type) => (
-                      <Button
-                        key={type}
-                        variant={selectedTransport === type ? "default" : "outline"}
-                        onClick={() => setSelectedTransport(type)}
-                      >
-                        {type}
-                      </Button>
-                    ))}
+                    {TRANSPORT_TYPES.map((type) => {
+                      const typeWaiting = stops?.find(s => s.id === selectedStop)?.stop_waiting?.filter(
+                        (w: any) => w.transport_type === type
+                      ).length || 0;
+
+                      return (
+                        <Button
+                          key={type}
+                          variant={selectedTransport === type ? "default" : "outline"}
+                          onClick={() => setSelectedTransport(type)}
+                        >
+                          {type}
+                        </Button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -611,3 +607,4 @@ function getWaitingColor(waitingCount: number) {
   if (waitingCount <= 7) return WAITING_COLORS.moderate;
   return WAITING_COLORS.high;
 }
+

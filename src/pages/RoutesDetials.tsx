@@ -40,16 +40,23 @@ export default function RouteDetails() {
 
   // Fetch stops with the number of people waiting
   const { data: stops, isLoading: stopsLoading, error: stopsError } = useQuery({
-    queryKey: ["stops", routeId],
+    queryKey: ["route_stops", routeId],
     queryFn: async () => {
+      // Using the new route_stops junction table
       const { data, error } = await supabase
-        .from("stops")
+        .from("route_stops")
         .select(`
           id, 
-          name, 
           order_number,
-          stop_waiting (
-            id
+          stops (
+            id,
+            name,
+            latitude,
+            longitude,
+            stop_waiting (
+              id,
+              route_id
+            )
           )
         `)
         .eq("route_id", routeId)
@@ -58,9 +65,16 @@ export default function RouteDetails() {
       if (error) throw error;
 
       // Map through the stops and add a waitingCount property
-      return data.map(stop => ({
-        ...stop,
-        waitingCount: stop.stop_waiting.length
+      // Only count people waiting for this specific route
+      return data.map(routeStop => ({
+        id: routeStop.stops.id,
+        name: routeStop.stops.name,
+        order_number: routeStop.order_number,
+        latitude: routeStop.stops.latitude,
+        longitude: routeStop.stops.longitude,
+        waitingCount: routeStop.stops.stop_waiting.filter(waiting => 
+          waiting.route_id === routeId
+        ).length
       }));
     },
   });
@@ -91,7 +105,7 @@ export default function RouteDetails() {
 
   // Loading and error states
   if (routeLoading) return <p>Loading route details...</p>;
-  if (routeError) return <p>Error loading route: {routeError.message}</p>;
+  if (routeError) return <p>Error loading route: {(routeError as Error).message}</p>;
 
   if (!route) return <p>Route not found.</p>;
 
@@ -192,6 +206,15 @@ export default function RouteDetails() {
               <h3 className="font-semibold mb-2">{stop.name}</h3>
               <p className="text-sm text-muted-foreground">People Waiting: {stop.waitingCount}</p>
               <p className="text-sm text-muted-foreground">Order: {stop.order_number}</p>
+              <div className="mt-3">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  asChild
+                >
+                  <Link to={`/stops/${stop.id}`}>View Stop Details</Link>
+                </Button>
+              </div>
             </Card>
           ))}
         </div>
